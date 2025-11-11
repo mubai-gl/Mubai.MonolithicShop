@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mubai.MonolithicShop", "Mubai.MonolithicShop\Mubai.MonolithicShop.csproj", "{1660F3CD-9D31-41CD-837E-4AC867037309}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mubai.MonolithicShop.Tests", "..\tests\Mubai.MonolithicShop.Tests\Mubai.MonolithicShop.Tests.csproj", "{78CD6B4D-70F2-4618-AB65-E0A7BFF5CB6D}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1660F3CD-9D31-41CD-837E-4AC867037309}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1660F3CD-9D31-41CD-837E-4AC867037309}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1660F3CD-9D31-41CD-837E-4AC867037309}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1660F3CD-9D31-41CD-837E-4AC867037309}.Release|Any CPU.Build.0 = Release|Any CPU
+		{78CD6B4D-70F2-4618-AB65-E0A7BFF5CB6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{78CD6B4D-70F2-4618-AB65-E0A7BFF5CB6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{78CD6B4D-70F2-4618-AB65-E0A7BFF5CB6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{78CD6B4D-70F2-4618-AB65-E0A7BFF5CB6D}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A4B28F71-FC2D-4276-A274-2FAAE932F202}
+	EndGlobalSection
+EndGlobal

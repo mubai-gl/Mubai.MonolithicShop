@@ -1,0 +1,6 @@
+@Mubai.MonolithicShop_HostAddress = http://localhost:5208
+
+GET {{Mubai.MonolithicShop_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
