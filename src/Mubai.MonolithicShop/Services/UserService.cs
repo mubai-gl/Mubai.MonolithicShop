@@ -3,11 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Infrastructure;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Mubai.MonolithicShop.Services;
 

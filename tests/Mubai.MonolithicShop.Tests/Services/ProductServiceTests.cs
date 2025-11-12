@@ -3,34 +3,23 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Services;
-using Xunit;
+using Mubai.MonolithicShop.Tests.TestUtilities;
 
 namespace Mubai.MonolithicShop.Tests.Services;
 
 /// <summary>
 /// 商品服务的功能测试，验证基础业务逻辑。
 /// </summary>
-public class ProductServiceTests : IClassFixture<TestUtilities.CustomWebApplicationFactory>
+public class ProductServiceTests : DatabaseTestBase
 {
-    private readonly TestUtilities.CustomWebApplicationFactory _factory;
-    private readonly IServiceScopeFactory _scopeFactory;
-
-    public ProductServiceTests(TestUtilities.CustomWebApplicationFactory factory)
+    public ProductServiceTests(CustomWebApplicationFactory factory) : base(factory)
     {
-        _factory = factory;
-        _scopeFactory = factory.Services.GetRequiredService<IServiceScopeFactory>();
-    }
-
-    private async Task ResetDatabaseAsync()
-    {
-        await _factory.ResetDatabaseAsync();
     }
 
     [Fact]
     public async Task CreateAsync_ShouldCreateProductAndInventory()
     {
-        await ResetDatabaseAsync();
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = CreateScope();
         var productService = scope.ServiceProvider.GetRequiredService<IProductService>();
         var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
 
@@ -48,8 +37,7 @@ public class ProductServiceTests : IClassFixture<TestUtilities.CustomWebApplicat
     [Fact]
     public async Task CreateAsync_DuplicateSku_ShouldThrow()
     {
-        await ResetDatabaseAsync();
-        await using var scope = _scopeFactory.CreateAsyncScope();
+        await using var scope = CreateScope();
         var productService = scope.ServiceProvider.GetRequiredService<IProductService>();
 
         var dto = new CreateProductRequestDto("测试商品", "SKU-001", 199m, null);

@@ -3,30 +3,23 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Services;
-using Xunit;
+using Mubai.MonolithicShop.Tests.TestUtilities;
 
 namespace Mubai.MonolithicShop.Tests.Concurrency;
 
 /// <summary>
 /// 并发场景下验证 UnitOfWork 的一致性。
 /// </summary>
-public class UnitOfWorkConcurrencyTests : IClassFixture<TestUtilities.CustomWebApplicationFactory>
+public class UnitOfWorkConcurrencyTests : DatabaseTestBase
 {
-    private readonly TestUtilities.CustomWebApplicationFactory _factory;
-    private readonly IServiceScopeFactory _scopeFactory;
-
-    public UnitOfWorkConcurrencyTests(TestUtilities.CustomWebApplicationFactory factory)
+    public UnitOfWorkConcurrencyTests(CustomWebApplicationFactory factory) : base(factory)
     {
-        _factory = factory;
-        _scopeFactory = factory.Services.GetRequiredService<IServiceScopeFactory>();
     }
 
     [Fact]
     public async Task UnitOfWork_ShouldHandleConcurrentProductCreation()
     {
-        await _factory.ResetDatabaseAsync();
-
-        var scopeFactory = _scopeFactory;
+        var scopeFactory = ScopeFactory;
         var tasks = Enumerable.Range(0, 10).Select(index => Task.Run(async () =>
         {
             await using var scope = scopeFactory.CreateAsyncScope();
@@ -37,7 +30,7 @@ public class UnitOfWorkConcurrencyTests : IClassFixture<TestUtilities.CustomWebA
 
         await Task.WhenAll(tasks);
 
-        await using var verifyScope = _scopeFactory.CreateAsyncScope();
+        await using var verifyScope = ScopeFactory.CreateAsyncScope();
         var verifyDb = verifyScope.ServiceProvider.GetRequiredService<ShopDbContext>();
         (await verifyDb.Products.CountAsync()).Should().Be(10);
         (await verifyDb.InventoryItems.CountAsync()).Should().Be(10);

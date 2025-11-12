@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using Mubai.MonolithicShop.Dtos;
+﻿using Mubai.MonolithicShop.Dtos;
 
 namespace Mubai.MonolithicShop.Services;
 

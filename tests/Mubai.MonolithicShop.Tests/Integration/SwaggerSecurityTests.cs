@@ -1,10 +1,6 @@
-using System.Linq;
+﻿using FluentAssertions;
 using System.Net;
-using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
-using FluentAssertions;
-using Xunit;
 
 namespace Mubai.MonolithicShop.Tests.Integration;
 

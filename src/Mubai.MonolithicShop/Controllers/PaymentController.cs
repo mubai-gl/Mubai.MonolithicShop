@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Mubai.MonolithicShop.Dtos;
-using Mubai.MonolithicShop.Filters;
 using Mubai.MonolithicShop.Services;
 
 namespace Mubai.MonolithicShop.Controllers;
@@ -11,7 +10,6 @@ namespace Mubai.MonolithicShop.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[UnitOfWork]
 [Authorize]
 public class PaymentController : ControllerBase
 {

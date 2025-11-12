@@ -1,15 +1,9 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.Snowflake;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Mubai.MonolithicShop.Services;
 
@@ -181,9 +175,10 @@ public class OrderService : IOrderService
     {
         order.Status = status;
         order.UpdatedTime = DateTime.UtcNow;
+        order.ConcurrencyStamp++;
 
         _orderRepository.Update(order);
-        await _unitOfWork.SaveChangesAsync(token);
+        await SaveOrderChangesAsync(token);
     }
 
     private static OrderResponseDto Map(Order order)
@@ -221,5 +216,17 @@ public class OrderService : IOrderService
     {
         order.TotalAmount = order.Items.Sum(i => i.TotalPrice);
         order.UpdatedTime = DateTime.UtcNow;
+    }
+
+    private async Task SaveOrderChangesAsync(CancellationToken token)
+    {
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(token);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("订单状态已被其他请求修改，请刷新后重试。");
+        }
     }
 }

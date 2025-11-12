@@ -1,69 +1,31 @@
-﻿namespace Mubai.MonolithicShop.Entities;
+using System.ComponentModel.DataAnnotations;
+
+namespace Mubai.MonolithicShop.Entities;
 
 /// <summary>
-/// 订单
+/// 订单实体。
 /// </summary>
 public class Order
 {
-    /// <summary>
-    /// 订单主键（雪花 ID）。
-    /// </summary>
     public long Id { get; set; }
-
-    /// <summary>
-    /// 下单用户主键。
-    /// </summary>
     public Guid UserId { get; set; }
-
-    /// <summary>
-    /// 关联用户信息。
-    /// </summary>
     public ApplicationUser? User { get; set; }
-
-    /// <summary>
-    /// 订单当前状态。
-    /// </summary>
     public OrderStatus Status { get; set; } = OrderStatus.PendingPayment;
-
-    /// <summary>
-    /// 订单总金额。
-    /// </summary>
     public decimal TotalAmount { get; set; }
-
-    /// <summary>
-    /// 货币类型，默认 CNY。
-    /// </summary>
     public string Currency { get; set; } = "CNY";
-
-    /// <summary>
-    /// 订单备注。
-    /// </summary>
     public string? Notes { get; set; }
-
-    /// <summary>
-    /// 支付信息。
-    /// </summary>
     public Payment? Payment { get; set; }
-
-    /// <summary>
-    /// 订单明细集合。
-    /// </summary>
     public ICollection<OrderItem> Items { get; set; } = new List<OrderItem>();
-
-    /// <summary>
-    /// 创建时间。
-    /// </summary>
     public DateTime CreatedTime { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedTime { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// 最近更新时间。
+    /// 乐观锁标记，在订单状态变更时递增。
     /// </summary>
-    public DateTime UpdatedTime { get; set; } = DateTime.UtcNow;
+    [ConcurrencyCheck]
+    public int ConcurrencyStamp { get; set; }
 }
 
-/// <summary>
-/// 订单状态枚举。
-/// </summary>
 public enum OrderStatus
 {
     PendingPayment = 0,

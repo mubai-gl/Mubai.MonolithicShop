@@ -1,6 +1,4 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
-using Mubai.MonolithicShop.Dtos;
+﻿using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Entities;
 
 namespace Mubai.MonolithicShop.Services;

@@ -20,6 +20,9 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             var overrides = new Dictionary<string, string?>
             {
                 ["DatabaseProvider"] = "Sqlite",
+                ["Database:Provider"] = "Sqlite",
+                ["Database:ConnectionString"] = $"Data Source={_dbPath}",
+                ["Database:SqliteConnectionString"] = $"Data Source={_dbPath}",
                 ["ConnectionStrings:Default"] = $"Data Source={_dbPath}"
             };
             configBuilder.AddInMemoryCollection(overrides);

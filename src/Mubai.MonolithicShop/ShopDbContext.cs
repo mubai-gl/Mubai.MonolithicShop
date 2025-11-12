@@ -61,6 +61,8 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Gui
             entity.HasIndex(i => i.ProductId).IsUnique();
             entity.Property(i => i.QuantityOnHand).IsRequired();
             entity.Property(i => i.ReservedQuantity).IsRequired();
+            entity.Property(i => i.ConcurrencyStamp)
+                .IsConcurrencyToken();
         });
     }
 
@@ -70,6 +72,8 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Gui
         {
             entity.Property(o => o.TotalAmount).HasPrecision(18, 2);
             entity.Property(o => o.Currency).HasMaxLength(16);
+            entity.Property(o => o.ConcurrencyStamp)
+                .IsConcurrencyToken();
             entity.HasOne(o => o.User)
                 .WithMany()
                 .HasForeignKey(o => o.UserId);

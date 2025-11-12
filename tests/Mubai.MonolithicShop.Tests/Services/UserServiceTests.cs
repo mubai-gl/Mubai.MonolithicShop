@@ -5,25 +5,19 @@ using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
-using System.Linq;
 
 namespace Mubai.MonolithicShop.Tests.Services;
 
-public class UserServiceTests : IClassFixture<CustomWebApplicationFactory>
+public class UserServiceTests : DatabaseTestBase
 {
-    private readonly CustomWebApplicationFactory _factory;
-
-    public UserServiceTests(CustomWebApplicationFactory factory)
+    public UserServiceTests(CustomWebApplicationFactory factory) : base(factory)
     {
-        _factory = factory;
     }
 
     [Fact]
     public async Task Register_ShouldThrow_WhenEmailAlreadyExists()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var userService = services.GetRequiredService<IUserService>();
@@ -41,9 +35,7 @@ public class UserServiceTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Register_ShouldReturnUser_WhenPasswordValid()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         var request = new CreateUserRequestDto("new-user@example.com", "新用户", "Passw0rd!", "13900000000");
@@ -57,9 +49,7 @@ public class UserServiceTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Register_ShouldPropagateIdentityErrors()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
         var request = new CreateUserRequestDto("weak-password@example.com", "弱口令用户", "123", null);

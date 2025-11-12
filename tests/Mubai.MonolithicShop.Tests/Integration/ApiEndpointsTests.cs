@@ -1,5 +1,7 @@
 ﻿using FluentAssertions;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Entities;
@@ -134,6 +136,16 @@ public class ApiEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAs
     }
 
     [Fact]
+    public async Task Product_Endpoints_ShouldRejectUnauthenticatedRequests()
+    {
+        var client = _factory.CreateClient();
+
+        var response = await client.GetAsync("/api/product");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task Order_PlaceOrder_ShouldReturnCreatedOrder()
     {
         var (client, user) = await CreateAuthorizedClientAsync();
@@ -149,6 +161,45 @@ public class ApiEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAs
 
         var order = await ReadResponseAsync<OrderResponseDto>(response, HttpStatusCode.Created);
         order.Status.Should().Be(OrderStatus.Paid);
+    }
+
+    [Fact]
+    public async Task Order_PlaceOrder_ShouldReturnPaymentFailed_WhenGatewayRejects()
+    {
+        var (client, user) = await CreateAuthorizedClientAsync();
+        var product = await SeedProductWithInventoryAsync();
+
+        var response = await client.PostAsJsonAsync("/api/order",
+            new PlaceOrderRequestDto(
+                user.Id,
+                new[] { new OrderItemRequestDto(product.Id, 1) },
+                "支付失败",
+                new PaymentRequestDto(product.Price, "MockGateway", "simulate-failure", "CNY")),
+            CancellationToken.None);
+
+        var order = await ReadResponseAsync<OrderResponseDto>(response, HttpStatusCode.Created);
+        order.Status.Should().Be(OrderStatus.PaymentFailed);
+    }
+
+    [Fact]
+    public async Task Order_PlaceOrder_ShouldReturnProblemDetails_WhenInventoryInsufficient()
+    {
+        var (client, user) = await CreateAuthorizedClientAsync();
+        var product = await SeedProductWithInventoryAsync(quantityOnHand: 1);
+
+        var response = await client.PostAsJsonAsync("/api/order",
+            new PlaceOrderRequestDto(
+                user.Id,
+                new[] { new OrderItemRequestDto(product.Id, 5) },
+                "库存不足",
+                new PaymentRequestDto(product.Price * 5, "MockGateway", "card", "CNY")),
+            CancellationToken.None);
+
+        response.StatusCode.Should().Be(HttpStatusCode.InternalServerError);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        problem.Should().NotBeNull();
+        problem!.Status.Should().Be(StatusCodes.Status500InternalServerError);
+        problem.Detail.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]

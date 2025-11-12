@@ -3,11 +3,6 @@ using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Repositories;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Mubai.MonolithicShop.Services;
 
@@ -47,7 +42,7 @@ public class InventoryService : IInventoryService
     {
         var inventoryItem = await EnsureInventoryItemAsync(request.ProductId, token);
         ApplyStockAdjustment(inventoryItem, request.QuantityDelta);
-        await _unitOfWork.SaveChangesAsync(token);
+        await SaveInventoryChangesAsync(token);
 
         return Map(inventoryItem);
     }
@@ -73,7 +68,7 @@ public class InventoryService : IInventoryService
             ReserveStock(inventoryItem, item.Quantity);
         }
 
-        await _unitOfWork.SaveChangesAsync(token);
+        await SaveInventoryChangesAsync(token);
         return new InventoryReservationResultDto(true, Array.Empty<string>());
     }
 
@@ -105,7 +100,7 @@ public class InventoryService : IInventoryService
             }
         }
 
-        await _unitOfWork.SaveChangesAsync(token);
+        await SaveInventoryChangesAsync(token);
     }
 
     private async Task<InventoryItem> EnsureInventoryItemAsync(Guid productId, CancellationToken token)
@@ -121,7 +116,7 @@ public class InventoryService : IInventoryService
 
         inventoryItem = CreateInventoryItem(product);
         await _inventoryRepository.AddAsync(inventoryItem, token);
-        await _unitOfWork.SaveChangesAsync(token);
+        await SaveInventoryChangesAsync(token);
 
         return inventoryItem;
     }
@@ -183,6 +178,7 @@ public class InventoryService : IInventoryService
 
         inventoryItem.QuantityOnHand = newQuantity;
         inventoryItem.UpdatedTime = DateTime.UtcNow;
+        inventoryItem.ConcurrencyStamp++;
     }
 
     private static void ReserveStock(InventoryItem inventoryItem, int quantity)
@@ -199,6 +195,7 @@ public class InventoryService : IInventoryService
 
         inventoryItem.ReservedQuantity += quantity;
         inventoryItem.UpdatedTime = DateTime.UtcNow;
+        inventoryItem.ConcurrencyStamp++;
     }
 
     private static void ReleaseReservation(InventoryItem inventoryItem, int quantity)
@@ -210,6 +207,7 @@ public class InventoryService : IInventoryService
 
         inventoryItem.ReservedQuantity = Math.Max(0, inventoryItem.ReservedQuantity - quantity);
         inventoryItem.UpdatedTime = DateTime.UtcNow;
+        inventoryItem.ConcurrencyStamp++;
     }
 
     private static void CommitReservation(InventoryItem inventoryItem, int quantity)
@@ -227,5 +225,18 @@ public class InventoryService : IInventoryService
         inventoryItem.ReservedQuantity -= quantity;
         inventoryItem.QuantityOnHand -= quantity;
         inventoryItem.UpdatedTime = DateTime.UtcNow;
+        inventoryItem.ConcurrencyStamp++;
+    }
+
+    private async Task SaveInventoryChangesAsync(CancellationToken token)
+    {
+        try
+        {
+            await _unitOfWork.SaveChangesAsync(token);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new InvalidOperationException("库存记录已被其他请求更新，请重试。");
+        }
     }
 }

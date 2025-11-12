@@ -7,21 +7,16 @@ using Mubai.MonolithicShop.Tests.TestUtilities;
 
 namespace Mubai.MonolithicShop.Tests.Services;
 
-public class InventoryServiceTests : IClassFixture<CustomWebApplicationFactory>
+public class InventoryServiceTests : DatabaseTestBase
 {
-    private readonly CustomWebApplicationFactory _factory;
-
-    public InventoryServiceTests(CustomWebApplicationFactory factory)
+    public InventoryServiceTests(CustomWebApplicationFactory factory) : base(factory)
     {
-        _factory = factory;
     }
 
     [Fact]
     public async Task AdjustInventory_ShouldThrow_WhenResultWouldBeNegative()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<ShopDbContext>();
         var inventoryService = services.GetRequiredService<IInventoryService>();
@@ -49,9 +44,7 @@ public class InventoryServiceTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task TryReserveStock_ShouldReturnErrors_WhenInventoryInsufficient()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<ShopDbContext>();
         var inventoryService = services.GetRequiredService<IInventoryService>();

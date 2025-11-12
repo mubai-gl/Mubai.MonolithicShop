@@ -1,7 +1,6 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.AspNetCore.Authorization;
 using Mubai.MonolithicShop.Controllers;
-using Xunit;
 
 namespace Mubai.MonolithicShop.Tests;
 

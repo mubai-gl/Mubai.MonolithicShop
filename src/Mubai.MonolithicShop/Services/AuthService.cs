@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Mubai.MonolithicShop.Dtos;
@@ -7,12 +6,9 @@ using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Options;
 using Mubai.MonolithicShop.Repositories;
-using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Mubai.MonolithicShop.Services;
 

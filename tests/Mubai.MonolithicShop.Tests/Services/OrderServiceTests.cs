@@ -5,26 +5,20 @@ using Microsoft.Extensions.DependencyInjection;
 using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Services;
-using System.Linq;
-using Xunit;
+using Mubai.MonolithicShop.Tests.TestUtilities;
 
 namespace Mubai.MonolithicShop.Tests.Services;
 
-public class OrderServiceTests : IClassFixture<TestUtilities.CustomWebApplicationFactory>
+public class OrderServiceTests : DatabaseTestBase
 {
-    private readonly TestUtilities.CustomWebApplicationFactory _factory;
-
-    public OrderServiceTests(TestUtilities.CustomWebApplicationFactory factory)
+    public OrderServiceTests(CustomWebApplicationFactory factory) : base(factory)
     {
-        _factory = factory;
     }
 
     [Fact]
     public async Task PlaceOrder_ShouldSucceed()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<ShopDbContext>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
@@ -65,9 +59,7 @@ public class OrderServiceTests : IClassFixture<TestUtilities.CustomWebApplicatio
     [Fact]
     public async Task PlaceOrder_ShouldFail_WhenInventoryUnavailable()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<ShopDbContext>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
@@ -104,9 +96,7 @@ public class OrderServiceTests : IClassFixture<TestUtilities.CustomWebApplicatio
     [Fact]
     public async Task PlaceOrder_ShouldReturnPaymentFailed_WhenProcessorRejects()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<ShopDbContext>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();

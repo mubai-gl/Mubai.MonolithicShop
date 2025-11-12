@@ -1,4 +1,4 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Mubai.MonolithicShop.Dtos;
@@ -6,25 +6,19 @@ using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
-using System.Linq;
 
 namespace Mubai.MonolithicShop.Tests.Services;
 
-public class PaymentServiceTests : IClassFixture<CustomWebApplicationFactory>
+public class PaymentServiceTests : DatabaseTestBase
 {
-    private readonly CustomWebApplicationFactory _factory;
-
-    public PaymentServiceTests(CustomWebApplicationFactory factory)
+    public PaymentServiceTests(CustomWebApplicationFactory factory) : base(factory)
     {
-        _factory = factory;
     }
 
     [Fact]
     public async Task ProcessPayment_ShouldFail_WhenAmountMismatch()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<ShopDbContext>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
@@ -42,9 +36,7 @@ public class PaymentServiceTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task ProcessPayment_ShouldFail_WhenSimulatedFailureRequested()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<ShopDbContext>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
@@ -62,9 +54,7 @@ public class PaymentServiceTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task ProcessPayment_ShouldUpdateExistingRecord_WhenPaymentProcessedAgain()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var db = services.GetRequiredService<ShopDbContext>();
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();

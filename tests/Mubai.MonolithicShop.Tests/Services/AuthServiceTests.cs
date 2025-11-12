@@ -1,29 +1,23 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
-using System.Linq;
 
 namespace Mubai.MonolithicShop.Tests.Services;
 
-public class AuthServiceTests : IClassFixture<CustomWebApplicationFactory>
+public class AuthServiceTests : DatabaseTestBase
 {
-    private readonly CustomWebApplicationFactory _factory;
-
-    public AuthServiceTests(CustomWebApplicationFactory factory)
+    public AuthServiceTests(CustomWebApplicationFactory factory) : base(factory)
     {
-        _factory = factory;
     }
 
     [Fact]
     public async Task Login_ShouldThrow_WhenPasswordDoesNotMatch()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var services = scope.ServiceProvider;
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var authService = services.GetRequiredService<IAuthService>();
@@ -39,9 +33,7 @@ public class AuthServiceTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task Refresh_ShouldThrow_WhenTokenNotFound()
     {
-        await _factory.ResetDatabaseAsync();
-
-        await using var scope = _factory.Services.CreateAsyncScope();
+        await using var scope = CreateScope();
         var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
 
         var act = () => authService.RefreshAsync(Guid.NewGuid().ToString("N"), CancellationToken.None);
