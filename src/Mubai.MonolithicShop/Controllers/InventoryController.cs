@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop.Dtos.Inventory;
 using Mubai.MonolithicShop.Services;
 
 namespace Mubai.MonolithicShop.Controllers;
@@ -11,14 +11,9 @@ namespace Mubai.MonolithicShop.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class InventoryController : ControllerBase
+public class InventoryController(IInventoryService inventoryService) : ControllerBase
 {
-    private readonly IInventoryService _inventoryService;
-
-    public InventoryController(IInventoryService inventoryService)
-    {
-        _inventoryService = inventoryService;
-    }
+    private readonly IInventoryService _inventoryService = inventoryService;
 
     /// <summary>
     /// 获取所有库存商品的数量概览。
@@ -28,15 +23,5 @@ public class InventoryController : ControllerBase
     {
         var items = await _inventoryService.GetInventoryAsync(token);
         return Ok(items);
-    }
-
-    /// <summary>
-    /// 按商品调整库存数量，可执行增减。
-    /// </summary>
-    [HttpPost("adjust")]
-    public async Task<ActionResult<InventoryItemResponseDto>> Adjust(AdjustInventoryRequestDto request, CancellationToken token)
-    {
-        var updated = await _inventoryService.AdjustInventoryAsync(request, token);
-        return Ok(updated);
     }
 }

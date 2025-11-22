@@ -2,14 +2,9 @@
 
 namespace Mubai.MonolithicShop.Options;
 
-public sealed class ConfigureDatabaseOptions : IConfigureOptions<DatabaseOptions>
+public sealed class ConfigureDatabaseOptions(IConfiguration configuration) : IConfigureOptions<DatabaseOptions>
 {
-    private readonly IConfiguration _configuration;
-
-    public ConfigureDatabaseOptions(IConfiguration configuration)
-    {
-        _configuration = configuration;
-    }
+    private readonly IConfiguration _configuration = configuration;
 
     public void Configure(DatabaseOptions options)
     {

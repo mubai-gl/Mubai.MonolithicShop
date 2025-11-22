@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop.Dtos.Payment;
 using Mubai.MonolithicShop.Services;
 
 namespace Mubai.MonolithicShop.Controllers;
@@ -11,14 +11,9 @@ namespace Mubai.MonolithicShop.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class PaymentController : ControllerBase
+public class PaymentController(IPaymentService paymentService) : ControllerBase
 {
-    private readonly IPaymentService _paymentService;
-
-    public PaymentController(IPaymentService paymentService)
-    {
-        _paymentService = paymentService;
-    }
+    private readonly IPaymentService _paymentService = paymentService;
 
     /// <summary>
     /// 根据订单编号获取支付结果。
@@ -28,5 +23,15 @@ public class PaymentController : ControllerBase
     {
         var payment = await _paymentService.GetByOrderAsync(orderId, token);
         return payment is null ? NotFound() : Ok(payment);
+    }
+
+    /// <summary>
+    /// 支付订单
+    /// </summary>
+    [HttpPost]
+    public async Task<ActionResult> ProcessPayment([FromBody] ProcessPaymentRequestDto processPaymentDto, CancellationToken token)
+    {
+        await _paymentService.ProcessPaymentAsync(processPaymentDto, token);
+        return Ok();
     }
 }

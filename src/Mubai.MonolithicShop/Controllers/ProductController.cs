@@ -1,24 +1,19 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop.Dtos.Product;
 using Mubai.MonolithicShop.Services;
 
 namespace Mubai.MonolithicShop.Controllers;
 
 /// <summary>
-/// 商品接口，支持查询、创建与更新。
+/// 商品接口。
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class ProductController : ControllerBase
+public class ProductController(IProductService productService) : ControllerBase
 {
-    private readonly IProductService _productService;
-
-    public ProductController(IProductService productService)
-    {
-        _productService = productService;
-    }
+    private readonly IProductService _productService = productService;
 
     /// <summary>
     /// 获取所有商品列表。
@@ -44,24 +39,19 @@ public class ProductController : ControllerBase
     /// 创建新商品。
     /// </summary>
     [HttpPost]
-    public async Task<ActionResult<ProductResponseDto>> Create(CreateProductRequestDto request, CancellationToken token)
+    public async Task<ActionResult> Create(CreateProductRequestDto request, CancellationToken token)
     {
-        var created = await _productService.CreateAsync(request, token);
-        return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
+        await _productService.CreateAsync(request, token);
+        return Ok();
     }
 
     /// <summary>
     /// 更新商品基本信息。
     /// </summary>
-    [HttpPut("{id:guid}")]
-    public async Task<ActionResult<ProductResponseDto>> Update(Guid id, UpdateProductRequestDto request, CancellationToken token)
+    [HttpPut]
+    public async Task<ActionResult<ProductResponseDto>> Update(UpdateProductRequestDto request, CancellationToken token)
     {
-        if (id != request.Id)
-        {
-            return BadRequest("路由中的主键与请求体不一致，请确认参数。");
-        }
-
-        var updated = await _productService.UpdateAsync(request, token);
-        return Ok(updated);
+        await _productService.UpdateAsync(request, token);
+        return Ok();
     }
 }

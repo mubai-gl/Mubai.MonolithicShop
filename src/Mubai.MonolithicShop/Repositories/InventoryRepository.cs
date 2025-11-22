@@ -1,14 +1,10 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Mubai.MonolithicShop.Entities;
 
 namespace Mubai.MonolithicShop.Repositories;
 
-public class InventoryRepository : GenericRepository<InventoryItem, Guid>, IInventoryRepository
+public class InventoryRepository(ShopDbContext dbContext) : GenericRepository<InventoryItem, Guid>(dbContext), IInventoryRepository
 {
-    public InventoryRepository(ShopDbContext dbContext) : base(dbContext)
-    {
-    }
-
     public Task<InventoryItem?> GetByProductIdAsync(Guid productId, CancellationToken token = default) =>
         DbSet.Include(i => i.Product).FirstOrDefaultAsync(i => i.ProductId == productId, token);
 

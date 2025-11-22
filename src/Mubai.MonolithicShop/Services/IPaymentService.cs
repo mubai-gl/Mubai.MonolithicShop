@@ -1,5 +1,4 @@
-﻿using Mubai.MonolithicShop.Dtos;
-using Mubai.MonolithicShop.Entities;
+﻿using Mubai.MonolithicShop.Dtos.Payment;
 
 namespace Mubai.MonolithicShop.Services;
 
@@ -9,9 +8,9 @@ namespace Mubai.MonolithicShop.Services;
 public interface IPaymentService
 {
     /// <summary>
-    /// 处理订单支付。
+    /// 处理支付结果.
     /// </summary>
-    Task<PaymentResponseDto> ProcessPaymentAsync(Order order, PaymentRequestDto request, CancellationToken token = default);
+    Task ProcessPaymentAsync(ProcessPaymentRequestDto request, CancellationToken token = default);
 
     /// <summary>
     /// 根据订单编号查询支付记录。

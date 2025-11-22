@@ -1,19 +1,19 @@
-﻿using Mubai.MonolithicShop.Dtos;
+﻿using Mubai.MonolithicShop.Dtos.Identity;
 
 namespace Mubai.MonolithicShop.Services;
 
 /// <summary>
-/// 用户服务契约。
+/// 用户服务契约，定义注册与查询能力。
 /// </summary>
 public interface IUserService
 {
     /// <summary>
     /// 注册新用户。
     /// </summary>
-    Task<UserResponseDto> RegisterAsync(CreateUserRequestDto request, CancellationToken token = default);
+    Task RegisterAsync(CreateUserDto request, CancellationToken token = default);
 
     /// <summary>
-    /// 根据主键获取用户。
+    /// 按照用户标识获取单个用户。
     /// </summary>
     Task<UserResponseDto?> GetAsync(Guid id, CancellationToken token = default);
 

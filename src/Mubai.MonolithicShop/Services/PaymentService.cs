@@ -1,71 +1,61 @@
-﻿using Mubai.MonolithicShop.Dtos;
+﻿using Mubai.MonolithicShop.Dtos.Payment;
 using Mubai.MonolithicShop.Entities;
-using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Repositories;
+using Mubai.UnitOfWork.Abstractions;
 
 namespace Mubai.MonolithicShop.Services;
 
 /// <summary>
 /// 支付服务，负责模拟支付渠道并记录结果。
 /// </summary>
-public class PaymentService : IPaymentService
+public class PaymentService(
+    IPaymentRepository paymentRepository, 
+    IOrderRepository orderRepository, 
+    IInventoryRepository inventoryRepository,
+    IUnitOfWork unitOfWork, 
+    ILogger<PaymentService> logger) : IPaymentService
 {
-    private readonly IPaymentRepository _paymentRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly ILogger<PaymentService> _logger;
+    private readonly IPaymentRepository _paymentRepository = paymentRepository;
+    private readonly IOrderRepository _orderRepository = orderRepository;
+    private readonly IInventoryRepository _inventoryRepository = inventoryRepository;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly ILogger<PaymentService> _logger = logger;
 
-    public PaymentService(
-        IPaymentRepository paymentRepository,
-        IUnitOfWork unitOfWork,
-        ILogger<PaymentService> logger)
+    /// <inheritdoc />
+    public async Task ProcessPaymentAsync(ProcessPaymentRequestDto request, CancellationToken token = default)
     {
-        _paymentRepository = paymentRepository;
-        _unitOfWork = unitOfWork;
-        _logger = logger;
+        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        {
+            var order = await _orderRepository.GetByIdAsync(request.OrderId);
+            var (payment, isNew) = await LoadOrCreatePaymentAsync(request, token);
+            DeterminePaymentResult(order, request, payment);
+            if (!isNew)
+            {
+                _paymentRepository.Update(payment);
+            }
+            payment = await _paymentRepository.GetByOrderIdAsync(request.OrderId, token);
+            if (payment.Status == PaymentStatus.Succeeded)
+            {
+                await UpdateOrderStatusAsync(order,OrderStatus.Paid);
+                await CommitReservationAsync(order.Items, token);
+
+            }
+            else
+            {
+                await UpdateOrderStatusAsync(order, OrderStatus.PaymentFailed);
+                await ReleaseReservationAsync(order.Items, token);
+            }
+            _orderRepository.Update(order);
+            await _unitOfWork.SaveChangesAsync(token);
+        }, token);
     }
 
-    /// <summary>
-    /// 处理支付请求，可按参数模拟失败或成功。
-    /// </summary>
-    public async Task<PaymentResponseDto> ProcessPaymentAsync(Order order, PaymentRequestDto request, CancellationToken token = default)
+    private async Task<(Payment payment, bool isNew)> LoadOrCreatePaymentAsync(ProcessPaymentRequestDto request, CancellationToken token)
     {
-        var (payment, isNew) = await LoadOrCreatePaymentAsync(order, request, token);
-        DeterminePaymentResult(order, request, payment);
-
-        if (!isNew)
-        {
-            _paymentRepository.Update(payment);
-        }
-        await _unitOfWork.SaveChangesAsync(token);
-
-        if (payment.Status == PaymentStatus.Succeeded)
-        {
-            _logger.LogInformation("支付记录 {PaymentId} 对应订单 {OrderId} 支付成功。", payment.Id, order.Id);
-        }
-        else
-        {
-            _logger.LogWarning("支付记录 {PaymentId} 对应订单 {OrderId} 支付失败：{Reason}", payment.Id, order.Id, payment.FailureReason);
-        }
-
-        return Map(payment);
-    }
-
-    /// <summary>
-    /// 根据订单编号查询支付结果。
-    /// </summary>
-    public async Task<PaymentResponseDto?> GetByOrderAsync(long orderId, CancellationToken token = default)
-    {
-        var payment = await _paymentRepository.GetByOrderIdAsync(orderId, token);
-        return payment is null ? null : Map(payment);
-    }
-
-    private async Task<(Payment payment, bool isNew)> LoadOrCreatePaymentAsync(Order order, PaymentRequestDto request, CancellationToken token)
-    {
-        var payment = await _paymentRepository.GetByOrderIdAsync(order.Id, token);
+        var payment = await _paymentRepository.GetByOrderIdAsync(request.OrderId, token);
         if (payment is not null)
         {
-            payment.Amount = order.TotalAmount;
-            payment.Currency = request.Currency;
+            payment.Amount = request.Amount;
             payment.Provider = request.Provider;
             payment.UpdatedTime = DateTime.UtcNow;
             return (payment, false);
@@ -73,9 +63,8 @@ public class PaymentService : IPaymentService
 
         payment = new Payment
         {
-            OrderId = order.Id,
-            Amount = order.TotalAmount,
-            Currency = request.Currency,
+            OrderId = request.OrderId,
+            Amount = request.Amount,
             Provider = request.Provider,
             CreatedTime = DateTime.UtcNow,
             UpdatedTime = DateTime.UtcNow
@@ -84,7 +73,7 @@ public class PaymentService : IPaymentService
         return (payment, true);
     }
 
-    private static void DeterminePaymentResult(Order order, PaymentRequestDto request, Payment payment)
+    private static void DeterminePaymentResult(Order order, ProcessPaymentRequestDto request, Payment payment)
     {
         if (request.Amount != order.TotalAmount)
         {
@@ -102,9 +91,9 @@ public class PaymentService : IPaymentService
         SetPaymentSucceeded(payment, $"PAY-{Guid.NewGuid():N}");
     }
 
-    private static PaymentResponseDto Map(Payment payment) =>
-        new(payment.Id, payment.Status, payment.ProviderReference, payment.FailureReason);
-
+    /// <summary>
+    /// 将支付记录标记为成功，并写入服务商参考号。
+    /// </summary>
     private static void SetPaymentSucceeded(Payment payment, string providerReference)
     {
         payment.Status = PaymentStatus.Succeeded;
@@ -113,11 +102,117 @@ public class PaymentService : IPaymentService
         payment.UpdatedTime = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// 将支付记录标记为失败，并写入失败原因。
+    /// </summary>
     private static void SetPaymentFailed(Payment payment, string reason)
     {
         payment.Status = PaymentStatus.Failed;
         payment.ProviderReference = null;
         payment.FailureReason = reason;
         payment.UpdatedTime = DateTime.UtcNow;
+    }
+
+    private async Task UpdateOrderStatusAsync(Order order, OrderStatus status)
+    {
+        order.Status = status;
+        order.UpdatedTime = DateTime.UtcNow;
+        order.ConcurrencyStamp++;
+        _orderRepository.Update(order);
+    }
+
+    /// <summary>
+    /// 释放预留库存
+    /// </summary>
+    private async Task ReleaseReservationAsync(IEnumerable<OrderItem> items, CancellationToken token = default)
+    {
+        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+        var entries = await _inventoryRepository.GetByProductIdsAsync(productIds, token);
+        var inventoryMap = entries.ToDictionary(i => i.ProductId);
+        List<Guid>? missingProducts = null;
+        foreach (var item in items)
+        {
+            if (!inventoryMap.TryGetValue(item.ProductId, out var inventoryItem))
+            {
+                missingProducts ??= new List<Guid>();
+                missingProducts.Add(item.ProductId);
+                continue;
+            }
+
+            ReleaseReservation(inventoryItem, item.Quantity);
+        }
+
+        if (missingProducts is { Count: > 0 })
+        {
+            throw new InvalidOperationException($"以下商品不存在，无法释放预留库存: {string.Join(',', missingProducts)}");
+        }
+    }
+    /// <summary>
+    /// 提交预留库存
+    /// </summary>
+
+    private async Task CommitReservationAsync(IEnumerable<OrderItem> items, CancellationToken token = default)
+    {
+        var productIds = items.Select(i => i.ProductId).Distinct().ToList();
+        var entries = await _inventoryRepository.GetByProductIdsAsync(productIds, token);
+        var inventoryMap = entries.ToDictionary(i => i.ProductId);
+
+        List<Guid>? missingProducts = null;
+        foreach (var item in items)
+        {
+            if (!inventoryMap.TryGetValue(item.ProductId, out var inventoryItem))
+            {
+                missingProducts ??= new List<Guid>();
+                missingProducts.Add(item.ProductId);
+                continue;
+            }
+            CommitReservation(inventoryItem, item.Quantity);
+        }
+
+        if (missingProducts is { Count: > 0 })
+        {
+            throw new InvalidOperationException($"以下商品不存在，无法扣减预留库存: {string.Join(',', missingProducts)}");
+        }
+    }
+
+    private static void ReleaseReservation(InventoryItem inventoryItem, int quantity)
+    {
+        if (quantity <= 0)
+        {
+            return;
+        }
+
+        inventoryItem.ReservedQuantity = Math.Max(0, inventoryItem.ReservedQuantity - quantity);
+        inventoryItem.UpdatedTime = DateTime.UtcNow;
+        inventoryItem.ConcurrencyStamp++;
+    }
+
+    private static void CommitReservation(InventoryItem inventoryItem, int quantity)
+    {
+        if (quantity <= 0)
+        {
+            return;
+        }
+
+        if (inventoryItem.ReservedQuantity < quantity)
+        {
+            throw new InvalidOperationException("扣减数量超过已预留数量。");
+        }
+
+        inventoryItem.ReservedQuantity -= quantity;
+        inventoryItem.QuantityOnHand -= quantity;
+        inventoryItem.UpdatedTime = DateTime.UtcNow;
+        inventoryItem.ConcurrencyStamp++;
+    }
+
+    /// <inheritdoc />
+    public async Task<PaymentResponseDto?> GetByOrderAsync(long orderId, CancellationToken token = default)
+    {
+        var payment = await _paymentRepository.GetByOrderIdAsync(orderId, token);
+        if (payment is not null)
+        {
+            return new(payment.Id, payment.Status, payment.ProviderReference, payment.FailureReason);
+        }
+        return null;
     }
 }

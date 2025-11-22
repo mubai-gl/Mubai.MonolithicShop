@@ -1,33 +1,28 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop.Dtos.Identity;
 using Mubai.MonolithicShop.Services;
 
 namespace Mubai.MonolithicShop.Controllers;
 
 /// <summary>
-/// 用户管理接口，涵盖注册与资料查询。
+/// 用户管理接口，支持注册与查询。
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class UserController : ControllerBase
+public class UserController(IUserService userService) : ControllerBase
 {
-    private readonly IUserService _userService;
-
-    public UserController(IUserService userService)
-    {
-        _userService = userService;
-    }
+    private readonly IUserService _userService = userService;
 
     /// <summary>
-    /// 注册新用户并返回其资料。
+    /// 注册新用户。
     /// </summary>
     [HttpPost]
-    public async Task<ActionResult<UserResponseDto>> Register(CreateUserRequestDto request, CancellationToken token)
+    public async Task<ActionResult> Register(CreateUserDto request, CancellationToken token)
     {
-        var user = await _userService.RegisterAsync(request, token);
-        return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
+        await _userService.RegisterAsync(request, token);
+        return Ok();
     }
 
     /// <summary>

@@ -1,14 +1,10 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Mubai.MonolithicShop.Entities;
 
 namespace Mubai.MonolithicShop.Repositories;
 
-public class OrderRepository : GenericRepository<Order, long>, IOrderRepository
+public class OrderRepository(ShopDbContext dbContext) : GenericRepository<Order, long>(dbContext), IOrderRepository
 {
-    public OrderRepository(ShopDbContext dbContext) : base(dbContext)
-    {
-    }
-
     public Task<Order?> GetWithItemsAsync(long orderId, CancellationToken token = default) =>
         DbSet.Include(o => o.Items)
             .ThenInclude(i => i.Product)

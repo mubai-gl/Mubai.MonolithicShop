@@ -1,4 +1,4 @@
-﻿using Mubai.MonolithicShop.Dtos;
+﻿using Mubai.MonolithicShop.Dtos.Identity;
 
 namespace Mubai.MonolithicShop.Services;
 
@@ -10,7 +10,7 @@ public interface IAuthService
     /// <summary>
     /// 使用邮箱与密码登录。
     /// </summary>
-    Task<TokenResponseDto> LoginAsync(LoginRequestDto request, CancellationToken token = default);
+    Task<TokenResponseDto> LoginAsync(LoginDto request, CancellationToken token = default);
 
     /// <summary>
     /// 根据刷新令牌获取新的访问令牌。

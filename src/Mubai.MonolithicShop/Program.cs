@@ -1,4 +1,4 @@
-using Mubai.MonolithicShop.Extensions;
+﻿using Mubai.MonolithicShop.Extensions;
 
 namespace Mubai.MonolithicShop;
 
@@ -35,14 +35,18 @@ public partial class Program
     {
         if (app.Environment.IsDevelopment())
         {
-            app.UseSwagger();
+            app.MapOpenApi();
             app.UseSwaggerUI(options =>
             {
-                options.SwaggerEndpoint("/swagger/v1/swagger.json", "Mubai.MonolithicShop API");
+                options.SwaggerEndpoint("/openapi/v1.json", "Mubai.MonolithicShop API");
                 options.RoutePrefix = string.Empty;
             });
         }
-
+        else
+        {
+            app.MapOpenApi().RequireAuthorization();
+        }
+        
         app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();

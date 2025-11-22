@@ -1,11 +1,11 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop.Dtos.Identity;
 using Mubai.MonolithicShop.Entities;
-using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Options;
 using Mubai.MonolithicShop.Repositories;
+using Mubai.UnitOfWork.Abstractions;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -15,32 +15,21 @@ namespace Mubai.MonolithicShop.Services;
 /// <summary>
 /// 身份认证服务，负责登录、刷新令牌与 JWT 签发。
 /// </summary>
-public class AuthService : IAuthService
+public class AuthService(
+    UserManager<ApplicationUser> userManager,
+    IRefreshTokenRepository refreshTokenRepository,
+    IUnitOfWork unitOfWork,
+    IOptions<JwtOptions> options,
+    ILogger<AuthService> logger) : IAuthService
 {
-    private readonly UserManager<ApplicationUser> _userManager;
-    private readonly IRefreshTokenRepository _refreshTokenRepository;
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly JwtOptions _jwtOptions;
-    private readonly ILogger<AuthService> _logger;
+    private readonly UserManager<ApplicationUser> _userManager = userManager;
+    private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly JwtOptions _jwtOptions = options.Value;
+    private readonly ILogger<AuthService> _logger = logger;
 
-    public AuthService(
-        UserManager<ApplicationUser> userManager,
-        IRefreshTokenRepository refreshTokenRepository,
-        IUnitOfWork unitOfWork,
-        IOptions<JwtOptions> options,
-        ILogger<AuthService> logger)
-    {
-        _userManager = userManager;
-        _refreshTokenRepository = refreshTokenRepository;
-        _unitOfWork = unitOfWork;
-        _jwtOptions = options.Value;
-        _logger = logger;
-    }
-
-    /// <summary>
-    /// 校验账号密码并生成新的访问令牌与刷新令牌。
-    /// </summary>
-    public async Task<TokenResponseDto> LoginAsync(LoginRequestDto request, CancellationToken token = default)
+    /// <inheritdoc />
+    public async Task<TokenResponseDto> LoginAsync(LoginDto request, CancellationToken token = default)
     {
         var user = await _userManager.FindByEmailAsync(request.Email)
                    ?? throw new InvalidOperationException("账号或密码错误。");
@@ -50,16 +39,14 @@ public class AuthService : IAuthService
             throw new InvalidOperationException("账号或密码错误。");
         }
 
-        _logger.LogInformation("用户 {Email} 登录成功。", user.Email);
+        _logger.LogInformation("用户 {Email} 登录成功", user.Email);
 
         var response = await IssueTokensAsync(user, token);
         await _unitOfWork.SaveChangesAsync(token);
         return response;
     }
 
-    /// <summary>
-    /// 根据刷新令牌换取新的访问令牌。
-    /// </summary>
+    /// <inheritdoc />
     public async Task<TokenResponseDto> RefreshAsync(string refreshToken, CancellationToken token = default)
     {
         var storedToken = await _refreshTokenRepository.GetByTokenAsync(refreshToken, token)
@@ -82,7 +69,7 @@ public class AuthService : IAuthService
     }
 
     /// <summary>
-    /// 颁发访问令牌与刷新令牌。
+    /// 生成新的访问令牌与刷新令牌并持久化刷新令牌。
     /// </summary>
     private async Task<TokenResponseDto> IssueTokensAsync(ApplicationUser user, CancellationToken token)
     {
@@ -101,7 +88,7 @@ public class AuthService : IAuthService
     }
 
     /// <summary>
-    /// 构造 JWT 字符串。
+    /// 基于用户身份构建 JWT 字符串。
     /// </summary>
     private string GenerateJwt(ApplicationUser user, DateTime expiresTime)
     {

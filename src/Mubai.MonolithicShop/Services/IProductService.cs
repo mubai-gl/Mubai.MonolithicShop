@@ -1,5 +1,4 @@
-﻿using Mubai.MonolithicShop.Dtos;
-
+﻿using Mubai.MonolithicShop.Dtos.Product;
 namespace Mubai.MonolithicShop.Services;
 
 /// <summary>
@@ -8,22 +7,22 @@ namespace Mubai.MonolithicShop.Services;
 public interface IProductService
 {
     /// <summary>
-    /// 创建商品。
+    /// 创建新的商品。
     /// </summary>
-    Task<ProductResponseDto> CreateAsync(CreateProductRequestDto request, CancellationToken token = default);
+    Task CreateAsync(CreateProductRequestDto request, CancellationToken token = default);
 
     /// <summary>
-    /// 更新商品。
+    /// 更新商品的基本信息。
     /// </summary>
-    Task<ProductResponseDto> UpdateAsync(UpdateProductRequestDto request, CancellationToken token = default);
+    Task UpdateAsync(UpdateProductRequestDto request, CancellationToken token = default);
 
     /// <summary>
-    /// 获取全部商品。
+    /// 获取全部商品列表。
     /// </summary>
     Task<IReadOnlyCollection<ProductResponseDto>> GetAllAsync(CancellationToken token = default);
 
     /// <summary>
-    /// 根据主键获取商品。
+    /// 根据唯一标识获取单个商品。
     /// </summary>
     Task<ProductResponseDto?> GetAsync(Guid id, CancellationToken token = default);
 }

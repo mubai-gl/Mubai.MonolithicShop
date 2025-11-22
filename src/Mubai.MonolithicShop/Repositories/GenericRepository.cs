@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 
 namespace Mubai.MonolithicShop.Repositories;
 
@@ -15,7 +15,7 @@ public class GenericRepository<TEntity, TKey> : IGenericRepository<TEntity, TKey
 
     public virtual async Task<TEntity?> GetByIdAsync(TKey id, CancellationToken token = default)
     {
-        return await DbSet.FindAsync(new object?[] { id }, cancellationToken: token);
+        return await DbSet.FindAsync([id], cancellationToken: token);
     }
 
     public virtual Task<List<TEntity>> ListAsync(CancellationToken token = default) =>

@@ -41,11 +41,6 @@ public class Payment
     public string? ProviderReference { get; set; }
 
     /// <summary>
-    /// 货币类型。
-    /// </summary>
-    public string Currency { get; set; } = "CNY";
-
-    /// <summary>
     /// 支付失败原因。
     /// </summary>
     public string? FailureReason { get; set; }

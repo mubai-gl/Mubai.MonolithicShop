@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Mubai.MonolithicShop.Entities;
@@ -95,7 +95,6 @@ public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Gui
         {
             entity.Property(p => p.Amount).HasPrecision(18, 2);
             entity.Property(p => p.Provider).HasMaxLength(64);
-            entity.Property(p => p.Currency).HasMaxLength(16);
             entity.HasOne(p => p.Order)
                 .WithOne(o => o.Payment)
                 .HasForeignKey<Payment>(p => p.OrderId);
