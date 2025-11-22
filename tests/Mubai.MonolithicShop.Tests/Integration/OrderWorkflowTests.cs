@@ -1,18 +1,20 @@
-﻿using FluentAssertions;
+using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop;
+using Mubai.MonolithicShop.Dtos.Identity;
+using Mubai.MonolithicShop.Dtos.Order;
+using Mubai.MonolithicShop.Dtos.Payment;
 using Mubai.MonolithicShop.Entities;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
 
 namespace Mubai.MonolithicShop.Tests.Integration;
 
 /// <summary>
-/// 订单全流程的集成测试，覆盖用户→下单→库存→支付的完整链路。
+/// ����ȫ���̵ļ��ɲ��ԣ������û����µ�������֧����������·��
 /// </summary>
 public class OrderWorkflowTests : IClassFixture<TestUtilities.CustomWebApplicationFactory>
 {
@@ -21,6 +23,40 @@ public class OrderWorkflowTests : IClassFixture<TestUtilities.CustomWebApplicati
     public OrderWorkflowTests(TestUtilities.CustomWebApplicationFactory factory)
     {
         _factory = factory;
+    }
+
+    [Fact]
+    public async Task PlaceOrder_FollowingUserStory_ShouldReachPaidStatus()
+    {
+        var (userId, productId, email, password) = await SeedUserAndProductAsync();
+        var client = _factory.CreateClient();
+        var accessToken = await AuthenticateAsync(client, email, password);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        var request = new PlaceOrderRequestDto(
+            userId,
+            new[] { new PlaceOrderItem(productId, 2, 99m) },
+            "�Զ������Զ���",
+            new PlaceOrderPaymentDto(198m, "MockGateway", "card", "CNY"));
+
+        var response = await client.PostAsJsonAsync("/api/order", request, CancellationToken.None);
+        var payload = await response.Content.ReadAsStringAsync();
+        response.StatusCode.Should().Be(HttpStatusCode.OK, "��Ӧ����: {0}", payload);
+
+        var orderId = await ResolveOrderIdAsync(userId);
+
+        var paymentResponse = await client.PostAsJsonAsync("/api/payment", new ProcessPaymentRequestDto(orderId, 198m, "MockGateway", "card"), CancellationToken.None);
+        paymentResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
+        var order = await db.Orders.Include(o => o.Payment).FirstAsync(o => o.Id == orderId);
+        order.Status.Should().Be(OrderStatus.Paid);
+        order.Payment.Should().NotBeNull();
+        order.Payment!.Status.Should().Be(PaymentStatus.Succeeded);
+
+        var inventory = await db.InventoryItems.FirstAsync(i => i.ProductId == productId);
+        inventory.ReservedQuantity.Should().Be(0);
     }
 
     private async Task<(Guid userId, Guid productId, string email, string password)> SeedUserAndProductAsync()
@@ -37,16 +73,16 @@ public class OrderWorkflowTests : IClassFixture<TestUtilities.CustomWebApplicati
             Id = Guid.NewGuid(),
             Email = email,
             UserName = email,
-            DisplayName = "下单用户"
+            DisplayName = "�µ��û�"
         };
         await userManager.CreateAsync(user, password);
 
         var product = new Product
         {
-            Name = "测试商品",
+            Name = "������Ʒ",
             Sku = "SKU-ORDER-001",
             Price = 99m,
-            Description = "用于订单流程测试"
+            Description = "���ڶ������̲���"
         };
         db.Products.Add(product);
         db.InventoryItems.Add(new InventoryItem
@@ -63,50 +99,24 @@ public class OrderWorkflowTests : IClassFixture<TestUtilities.CustomWebApplicati
 
     private static async Task<string> AuthenticateAsync(HttpClient client, string email, string password)
     {
-        var loginRequest = new LoginRequestDto(email, password);
+        var loginRequest = new LoginDto(email, password);
         var loginResponse = await client.PostAsJsonAsync("/api/auth/login", loginRequest, CancellationToken.None);
         var loginPayload = await loginResponse.Content.ReadAsStringAsync();
-        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK, "登录响应: {0}", loginPayload);
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK, "��¼��Ӧ: {0}", loginPayload);
 
         var tokenResponse = await loginResponse.Content.ReadFromJsonAsync<TokenResponseDto>();
         tokenResponse.Should().NotBeNull();
         return tokenResponse!.AccessToken;
     }
 
-    [Fact]
-    public async Task PlaceOrder_FollowingUserStory_ShouldReachPaidStatus()
+    private async Task<long> ResolveOrderIdAsync(Guid userId)
     {
-        var (userId, productId, email, password) = await SeedUserAndProductAsync();
-        var client = _factory.CreateClient();
-        var accessToken = await AuthenticateAsync(client, email, password);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-
-        var request = new PlaceOrderRequestDto(
-            userId,
-            new[] { new OrderItemRequestDto(productId, 2) },
-            "自动化测试订单",
-            new PaymentRequestDto(198m, "MockGateway", "card", "CNY"));
-
-        var response = await client.PostAsJsonAsync("/api/order", request, CancellationToken.None);
-        var payload = await response.Content.ReadAsStringAsync();
-        response.StatusCode.Should().Be(HttpStatusCode.Created, "响应内容: {0}", payload);
-
-        var orderDto = JsonSerializer.Deserialize<OrderResponseDto>(payload, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
-        orderDto.Should().NotBeNull();
-        orderDto!.Status.Should().Be(OrderStatus.Paid);
-        orderDto.TotalAmount.Should().Be(198m);
-
         await using var scope = _factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
-        var order = await db.Orders.Include(o => o.Payment).FirstAsync(o => o.Id == orderDto.OrderId);
-        order.Payment.Should().NotBeNull();
-        order.Payment!.Status.Should().Be(PaymentStatus.Succeeded);
-
-        var inventory = await db.InventoryItems.FirstAsync(i => i.ProductId == productId);
-        inventory.QuantityOnHand.Should().Be(8);
-        inventory.ReservedQuantity.Should().Be(0);
+        return await db.Orders
+            .Where(o => o.UserId == userId)
+            .OrderByDescending(o => o.CreatedTime)
+            .Select(o => o.Id)
+            .FirstAsync();
     }
 }

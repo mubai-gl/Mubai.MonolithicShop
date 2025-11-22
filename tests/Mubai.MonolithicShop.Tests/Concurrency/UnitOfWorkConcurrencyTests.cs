@@ -1,7 +1,8 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop;
+using Mubai.MonolithicShop.Dtos.Product;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
 

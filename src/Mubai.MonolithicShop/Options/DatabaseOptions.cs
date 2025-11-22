@@ -1,4 +1,4 @@
-namespace Mubai.MonolithicShop.Options;
+﻿namespace Mubai.MonolithicShop.Options;
 
 public class DatabaseOptions
 {

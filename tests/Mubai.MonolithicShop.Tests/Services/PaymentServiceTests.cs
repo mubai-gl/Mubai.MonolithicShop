@@ -1,7 +1,8 @@
 ﻿using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop;
+using Mubai.MonolithicShop.Dtos.Payment;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.MonolithicShop.Services;
@@ -20,17 +21,18 @@ public class PaymentServiceTests : DatabaseTestBase
     {
         await using var scope = CreateScope();
         var services = scope.ServiceProvider;
-        var db = services.GetRequiredService<ShopDbContext>();
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var paymentService = services.GetRequiredService<IPaymentService>();
+        var paymentRepository = services.GetRequiredService<IPaymentRepository>();
+        var order = await SeedOrderAsync(services, 200m);
 
-        var order = await SeedOrderAsync(db, userManager, 200m);
-        var request = new PaymentRequestDto(150m, "MockGateway", "card", "CNY");
+        await paymentService.ProcessPaymentAsync(
+            new ProcessPaymentRequestDto(order.Id, 150m, "MockGateway", "card"),
+            CancellationToken.None);
 
-        var response = await paymentService.ProcessPaymentAsync(order, request, CancellationToken.None);
-
-        response.Status.Should().Be(PaymentStatus.Failed);
-        response.FailureReason.Should().NotBeNullOrWhiteSpace();
+        var payment = await paymentRepository.GetByOrderIdAsync(order.Id, CancellationToken.None);
+        payment.Should().NotBeNull();
+        payment!.Status.Should().Be(PaymentStatus.Failed);
+        payment.FailureReason.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -38,17 +40,18 @@ public class PaymentServiceTests : DatabaseTestBase
     {
         await using var scope = CreateScope();
         var services = scope.ServiceProvider;
-        var db = services.GetRequiredService<ShopDbContext>();
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var paymentService = services.GetRequiredService<IPaymentService>();
+        var paymentRepository = services.GetRequiredService<IPaymentRepository>();
+        var order = await SeedOrderAsync(services, 80m);
 
-        var order = await SeedOrderAsync(db, userManager, 80m);
-        var request = new PaymentRequestDto(order.TotalAmount, "MockGateway", "simulate-failure", "CNY");
+        await paymentService.ProcessPaymentAsync(
+            new ProcessPaymentRequestDto(order.Id, order.TotalAmount, "MockGateway", "simulate-failure"),
+            CancellationToken.None);
 
-        var response = await paymentService.ProcessPaymentAsync(order, request, CancellationToken.None);
-
-        response.Status.Should().Be(PaymentStatus.Failed);
-        response.FailureReason.Should().NotBeNullOrWhiteSpace();
+        var payment = await paymentRepository.GetByOrderIdAsync(order.Id, CancellationToken.None);
+        payment.Should().NotBeNull();
+        payment!.Status.Should().Be(PaymentStatus.Failed);
+        payment.FailureReason.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -56,29 +59,28 @@ public class PaymentServiceTests : DatabaseTestBase
     {
         await using var scope = CreateScope();
         var services = scope.ServiceProvider;
-        var db = services.GetRequiredService<ShopDbContext>();
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var paymentService = services.GetRequiredService<IPaymentService>();
         var paymentRepository = services.GetRequiredService<IPaymentRepository>();
+        var order = await SeedOrderAsync(services, 120m);
 
-        var order = await SeedOrderAsync(db, userManager, 120m);
-        var initialRequest = new PaymentRequestDto(order.TotalAmount, "Gateway-A", "card", "CNY");
-        var secondRequest = initialRequest with { Provider = "Gateway-B", Currency = "USD" };
-
-        var first = await paymentService.ProcessPaymentAsync(order, initialRequest, CancellationToken.None);
-        first.Status.Should().Be(PaymentStatus.Succeeded);
-
-        var second = await paymentService.ProcessPaymentAsync(order, secondRequest, CancellationToken.None);
-        second.Status.Should().Be(PaymentStatus.Succeeded);
+        await paymentService.ProcessPaymentAsync(
+            new ProcessPaymentRequestDto(order.Id, order.TotalAmount, "Gateway-A", "card"),
+            CancellationToken.None);
+        await paymentService.ProcessPaymentAsync(
+            new ProcessPaymentRequestDto(order.Id, order.TotalAmount, "Gateway-B", "card"),
+            CancellationToken.None);
 
         var stored = await paymentRepository.GetByOrderIdAsync(order.Id, CancellationToken.None);
         stored.Should().NotBeNull();
-        stored!.Provider.Should().Be("Gateway-B");
-        stored.Currency.Should().Be("USD");
+        stored!.Provider.Should().Be("Gateway-A");
+        stored.Status.Should().Be(PaymentStatus.Succeeded);
     }
 
-    private static async Task<Order> SeedOrderAsync(ShopDbContext db, UserManager<ApplicationUser> userManager, decimal totalAmount)
+    private static async Task<Order> SeedOrderAsync(IServiceProvider services, decimal totalAmount)
     {
+        var db = services.GetRequiredService<ShopDbContext>();
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+
         var email = $"payment-{Guid.NewGuid():N}@example.com";
         var user = new ApplicationUser
         {
@@ -89,17 +91,43 @@ public class PaymentServiceTests : DatabaseTestBase
         var createResult = await userManager.CreateAsync(user, "Passw0rd!");
         createResult.Succeeded.Should().BeTrue(string.Join(";", createResult.Errors.Select(e => e.Description)));
 
+        var product = new Product
+        {
+            Name = "֧������Ʒ",
+            Sku = $"SKU-PAY-{Guid.NewGuid():N}".Substring(0, 16),
+            Price = totalAmount
+        };
+        db.Products.Add(product);
+
+        var orderId = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
         var order = new Order
         {
-            Id = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            Id = orderId,
             UserId = user.Id,
             TotalAmount = totalAmount,
-            Status = OrderStatus.AwaitingPayment
+            Status = OrderStatus.AwaitingPayment,
+            Items = new List<OrderItem>
+            {
+                new()
+                {
+                    OrderId = orderId,
+                    ProductId = product.Id,
+                    Quantity = 1,
+                    UnitPrice = totalAmount
+                }
+            }
         };
 
         db.Orders.Add(order);
-        await db.SaveChangesAsync();
+        db.InventoryItems.Add(new InventoryItem
+        {
+            ProductId = product.Id,
+            QuantityOnHand = 5,
+            ReservedQuantity = 2
+        });
 
+        await db.SaveChangesAsync();
         return order;
     }
 }

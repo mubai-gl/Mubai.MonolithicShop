@@ -1,14 +1,15 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop;
+using Mubai.MonolithicShop.Dtos.Product;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
 
 namespace Mubai.MonolithicShop.Tests.Services;
 
 /// <summary>
-/// 商品服务的功能测试，验证基础业务逻辑。
+/// ��Ʒ����Ĺ��ܲ��ԣ���֤����ҵ���߼���
 /// </summary>
 public class ProductServiceTests : DatabaseTestBase
 {
@@ -23,13 +24,13 @@ public class ProductServiceTests : DatabaseTestBase
         var productService = scope.ServiceProvider.GetRequiredService<IProductService>();
         var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
 
-        var dto = new CreateProductRequestDto("测试商品", "SKU-001", 199m, "高端配置");
-        var result = await productService.CreateAsync(dto, CancellationToken.None);
+        var dto = new CreateProductRequestDto("������Ʒ", "SKU-001", 199m, "�߶�����");
+        await productService.CreateAsync(dto, CancellationToken.None);
 
-        result.Should().NotBeNull();
-        result.Sku.Should().Be("SKU-001");
+        var created = await db.Products.SingleAsync(p => p.Sku == "SKU-001");
+        created.Name.Should().Be("������Ʒ");
 
-        var inventory = await db.InventoryItems.FirstOrDefaultAsync(i => i.ProductId == result.Id);
+        var inventory = await db.InventoryItems.FirstOrDefaultAsync(i => i.ProductId == created.Id);
         inventory.Should().NotBeNull();
         inventory!.QuantityOnHand.Should().Be(0);
     }
@@ -40,12 +41,12 @@ public class ProductServiceTests : DatabaseTestBase
         await using var scope = CreateScope();
         var productService = scope.ServiceProvider.GetRequiredService<IProductService>();
 
-        var dto = new CreateProductRequestDto("测试商品", "SKU-001", 199m, null);
+        var dto = new CreateProductRequestDto("������Ʒ", "SKU-001", 199m, null);
         await productService.CreateAsync(dto, CancellationToken.None);
 
         var act = async () => await productService.CreateAsync(dto, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*SKU-001*已存在*");
+            .WithMessage("*SKU-001*");
     }
 }

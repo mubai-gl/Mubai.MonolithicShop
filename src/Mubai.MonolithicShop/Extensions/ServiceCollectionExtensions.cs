@@ -11,6 +11,7 @@ using Mubai.MonolithicShop.Options;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.MonolithicShop.Services;
 using Mubai.Snowflake;
+using Mubai.UnitOfWork.Abstractions;
 using Mubai.UnitOfWork.EntityFrameworkCore;
 
 namespace Mubai.MonolithicShop.Extensions;
@@ -29,12 +30,19 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<ShopDbContext>((serviceProvider, options) =>
         {
             var dbOptions = serviceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-            //if (string.Equals(dbOptions.Provider, DatabaseOptions.SqliteProvider, StringComparison.OrdinalIgnoreCase))
-            //{
-            //    var sqliteConn = dbOptions.SqliteConnectionString ?? DatabaseOptions.DefaultSqliteConnection;
-            //    options.UseSqlite(sqliteConn);
-            //    return;
-            //}
+            if (string.Equals(dbOptions.Provider, "InMemory", StringComparison.OrdinalIgnoreCase))
+            {
+                var databaseName = dbOptions.ConnectionString ?? $"mubai-tests-{Guid.NewGuid():N}";
+                options.UseInMemoryDatabase(databaseName);
+                return;
+            }
+
+            if (string.Equals(dbOptions.Provider, DatabaseOptions.SqliteProvider, StringComparison.OrdinalIgnoreCase))
+            {
+                var sqliteConn = dbOptions.SqliteConnectionString ?? DatabaseOptions.DefaultSqliteConnection;
+                options.UseSqlite(sqliteConn);
+                return;
+            }
 
             var connectionString = dbOptions.ConnectionString
                                    ?? configuration.GetConnectionString("Default")
@@ -56,6 +64,7 @@ public static class ServiceCollectionExtensions
         services.AddSnowflakeIdGenerator(options => options.WorkerId = 1);
 
         services.AddScoped<IEfUnitOfWork<ShopDbContext>, EfUnitOfWork<ShopDbContext>>();
+        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IEfUnitOfWork<ShopDbContext>>());
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();

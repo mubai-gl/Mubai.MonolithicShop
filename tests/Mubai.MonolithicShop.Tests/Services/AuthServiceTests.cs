@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop.Dtos.Identity;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
@@ -25,7 +25,7 @@ public class AuthServiceTests : DatabaseTestBase
         var email = "auth-tests@example.com";
         await SeedUserAsync(userManager, email, "Correct#123");
 
-        var act = () => authService.LoginAsync(new LoginRequestDto(email, "WrongPassword!"), CancellationToken.None);
+        var act = () => authService.LoginAsync(new LoginDto(email, "WrongPassword!"), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
     }

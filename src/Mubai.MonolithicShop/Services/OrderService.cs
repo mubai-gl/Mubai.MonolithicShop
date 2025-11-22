@@ -80,7 +80,7 @@ public class OrderService(IOrderRepository orderRepository, IInventoryRepository
     }
 
     #region 锁库存
-    public async Task TryReserveInventoryAsync(Order order, IReadOnlyCollection<PlaceOrderItem> items, CancellationToken token = default)
+    private async Task TryReserveInventoryAsync(Order order, IReadOnlyCollection<PlaceOrderItem> items, CancellationToken token = default)
     {
         try
         {
@@ -133,7 +133,6 @@ public class OrderService(IOrderRepository orderRepository, IInventoryRepository
         order.Status = status;
         order.UpdatedTime = DateTime.UtcNow;
         order.ConcurrencyStamp++;
-        _orderRepository.Update(order);
     }
 
     public async Task<OrderResponseDto?> GetAsync(long orderId, CancellationToken token = default)

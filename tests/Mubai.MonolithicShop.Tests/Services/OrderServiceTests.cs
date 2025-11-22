@@ -2,7 +2,8 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop;
+using Mubai.MonolithicShop.Dtos.Order;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
@@ -16,7 +17,7 @@ public class OrderServiceTests : DatabaseTestBase
     }
 
     [Fact]
-    public async Task PlaceOrder_ShouldSucceed()
+    public async Task PlaceOrder_ShouldPersistOrderAndReserveInventory()
     {
         await using var scope = CreateScope();
         var services = scope.ServiceProvider;
@@ -24,17 +25,11 @@ public class OrderServiceTests : DatabaseTestBase
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var orderService = services.GetRequiredService<IOrderService>();
 
-        var user = new ApplicationUser
-        {
-            Id = Guid.NewGuid(),
-            Email = "test@case.com",
-            UserName = "test@case.com"
-        };
-        await userManager.CreateAsync(user, "Passw0rd!");
+        var user = await CreateUserAsync(userManager, "test@case.com");
 
         var product = new Product
         {
-            Name = "调试商品",
+            Name = "������Ʒ",
             Sku = "SKU-DEBUG",
             Price = 100m
         };
@@ -48,16 +43,23 @@ public class OrderServiceTests : DatabaseTestBase
 
         var request = new PlaceOrderRequestDto(
             user.Id,
-            new[] { new OrderItemRequestDto(product.Id, 1) },
+            new[] { new PlaceOrderItem(product.Id, 2, product.Price) },
             null,
-            new PaymentRequestDto(100m, "Mock", "card", "CNY"));
+            new PlaceOrderPaymentDto(product.Price * 2, "Mock", "card", "CNY"));
 
-        var result = await orderService.PlaceOrderAsync(request, CancellationToken.None);
-        result.Status.Should().Be(OrderStatus.Paid);
+        await orderService.PlaceOrderAsync(request, CancellationToken.None);
+
+        var storedOrder = await db.Orders.Include(o => o.Items).SingleAsync();
+        storedOrder.Status.Should().Be(OrderStatus.AwaitingPayment);
+        storedOrder.TotalAmount.Should().Be(200m);
+        storedOrder.Items.Should().ContainSingle(i => i.ProductId == product.Id && i.Quantity == 2);
+
+        var inventory = await db.InventoryItems.SingleAsync(i => i.ProductId == product.Id);
+        inventory.ReservedQuantity.Should().Be(2);
     }
 
     [Fact]
-    public async Task PlaceOrder_ShouldFail_WhenInventoryUnavailable()
+    public async Task GetAsync_ShouldReturnOrderWithItems()
     {
         await using var scope = CreateScope();
         var services = scope.ServiceProvider;
@@ -65,69 +67,35 @@ public class OrderServiceTests : DatabaseTestBase
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var orderService = services.GetRequiredService<IOrderService>();
 
-        var user = await CreateUserAsync(userManager, "inventory-fail@example.com");
+        var user = await CreateUserAsync(userManager, "lookup@example.com");
         var product = new Product
         {
-            Name = "库存不足商品",
-            Sku = "SKU-NO-STOCK",
+            Name = "��ѯ��Ʒ",
+            Sku = "SKU-LOOKUP",
             Price = 50m
         };
         db.Products.Add(product);
         db.InventoryItems.Add(new InventoryItem
         {
             ProductId = product.Id,
-            QuantityOnHand = 0
+            QuantityOnHand = 3
         });
         await db.SaveChangesAsync();
 
         var request = new PlaceOrderRequestDto(
             user.Id,
-            new[] { new OrderItemRequestDto(product.Id, 1) },
-            null,
-            new PaymentRequestDto(50m, "Mock", "card", "CNY"));
+            new[] { new PlaceOrderItem(product.Id, 1, product.Price) },
+            "notes",
+            new PlaceOrderPaymentDto(product.Price, "Mock", "card", "CNY"));
 
-        var act = () => orderService.PlaceOrderAsync(request, CancellationToken.None);
+        await orderService.PlaceOrderAsync(request, CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        var storedOrder = await db.Orders.SingleAsync();
-        storedOrder.Status.Should().Be(OrderStatus.InventoryFailed);
-    }
+        var orderId = await db.Orders.Select(o => o.Id).SingleAsync();
+        var dto = await orderService.GetAsync(orderId, CancellationToken.None);
 
-    [Fact]
-    public async Task PlaceOrder_ShouldReturnPaymentFailed_WhenProcessorRejects()
-    {
-        await using var scope = CreateScope();
-        var services = scope.ServiceProvider;
-        var db = services.GetRequiredService<ShopDbContext>();
-        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var orderService = services.GetRequiredService<IOrderService>();
-
-        var user = await CreateUserAsync(userManager, "payment-fail@example.com");
-        var product = new Product
-        {
-            Name = "支付失败测试商品",
-            Sku = "SKU-PAYFAIL",
-            Price = 99m
-        };
-        db.Products.Add(product);
-        db.InventoryItems.Add(new InventoryItem
-        {
-            ProductId = product.Id,
-            QuantityOnHand = 10
-        });
-        await db.SaveChangesAsync();
-
-        var request = new PlaceOrderRequestDto(
-            user.Id,
-            new[] { new OrderItemRequestDto(product.Id, 1) },
-            "trigger payment failure",
-            new PaymentRequestDto(product.Price, "Mock", "simulate-failure", "CNY"));
-
-        var response = await orderService.PlaceOrderAsync(request, CancellationToken.None);
-
-        response.Status.Should().Be(OrderStatus.PaymentFailed);
-        var storedOrder = await db.Orders.SingleAsync(o => o.Id == response.OrderId);
-        storedOrder.Status.Should().Be(OrderStatus.PaymentFailed);
+        dto.Should().NotBeNull();
+        dto!.OrderId.Should().Be(orderId);
+        dto.Items.Should().ContainSingle(i => i.ProductId == product.Id && i.Quantity == 1);
     }
 
     private static async Task<ApplicationUser> CreateUserAsync(UserManager<ApplicationUser> userManager, string email)

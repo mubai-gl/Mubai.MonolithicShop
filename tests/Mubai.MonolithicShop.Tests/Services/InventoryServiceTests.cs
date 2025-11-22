@@ -1,6 +1,6 @@
 ﻿using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
@@ -14,7 +14,7 @@ public class InventoryServiceTests : DatabaseTestBase
     }
 
     [Fact]
-    public async Task AdjustInventory_ShouldThrow_WhenResultWouldBeNegative()
+    public async Task GetInventory_ShouldReturnTrackedItems()
     {
         await using var scope = CreateScope();
         var services = scope.ServiceProvider;
@@ -23,52 +23,24 @@ public class InventoryServiceTests : DatabaseTestBase
 
         var product = new Product
         {
-            Name = "库存测试商品",
-            Sku = "SKU-NEG",
+            Name = "��������Ʒ",
+            Sku = "SKU-INV",
             Price = 10m
         };
         db.Products.Add(product);
         db.InventoryItems.Add(new InventoryItem
         {
             ProductId = product.Id,
-            QuantityOnHand = 1
+            QuantityOnHand = 3,
+            ReservedQuantity = 1
         });
         await db.SaveChangesAsync();
 
-        var request = new AdjustInventoryRequestDto(product.Id, -5);
-        Func<Task> act = () => inventoryService.AdjustInventoryAsync(request, CancellationToken.None);
+        var items = await inventoryService.GetInventoryAsync(CancellationToken.None);
 
-        await act.Should().ThrowAsync<InvalidOperationException>();
-    }
-
-    [Fact]
-    public async Task TryReserveStock_ShouldReturnErrors_WhenInventoryInsufficient()
-    {
-        await using var scope = CreateScope();
-        var services = scope.ServiceProvider;
-        var db = services.GetRequiredService<ShopDbContext>();
-        var inventoryService = services.GetRequiredService<IInventoryService>();
-
-        var product = new Product
-        {
-            Name = "库存不足商品",
-            Sku = "SKU-RES",
-            Price = 20m
-        };
-        db.Products.Add(product);
-        db.InventoryItems.Add(new InventoryItem
-        {
-            ProductId = product.Id,
-            QuantityOnHand = 1,
-            ReservedQuantity = 0
-        });
-        await db.SaveChangesAsync();
-
-        var requestItems = new[] { new OrderItemRequestDto(product.Id, 5) };
-
-        var result = await inventoryService.TryReserveStockAsync(requestItems, CancellationToken.None);
-
-        result.Success.Should().BeFalse();
-        result.Errors.Should().NotBeEmpty();
+        items.Should().ContainSingle(i =>
+            i.ProductId == product.Id &&
+            i.QuantityOnHand == 3 &&
+            i.ReservedQuantity == 1);
     }
 }

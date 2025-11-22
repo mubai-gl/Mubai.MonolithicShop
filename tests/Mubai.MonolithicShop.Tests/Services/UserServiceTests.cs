@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop.Dtos;
+using Mubai.MonolithicShop.Dtos.Identity;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
@@ -25,7 +25,7 @@ public class UserServiceTests : DatabaseTestBase
         var email = "duplicate@example.com";
         await SeedUserAsync(userManager, email);
 
-        var request = new CreateUserRequestDto(email, "重复用户", "Passw0rd!", "13800138000");
+        var request = new CreateUserDto(email, "�ظ��û�", "Passw0rd!", "13800138000");
 
         var act = () => userService.RegisterAsync(request, CancellationToken.None);
 
@@ -33,17 +33,20 @@ public class UserServiceTests : DatabaseTestBase
     }
 
     [Fact]
-    public async Task Register_ShouldReturnUser_WhenPasswordValid()
+    public async Task Register_ShouldPersistUser_WhenPasswordValid()
     {
         await using var scope = CreateScope();
-        var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
+        var services = scope.ServiceProvider;
+        var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+        var userService = services.GetRequiredService<IUserService>();
 
-        var request = new CreateUserRequestDto("new-user@example.com", "新用户", "Passw0rd!", "13900000000");
+        var request = new CreateUserDto("new-user@example.com", "���û�", "Passw0rd!", "13900000000");
 
-        var response = await userService.RegisterAsync(request, CancellationToken.None);
+        await userService.RegisterAsync(request, CancellationToken.None);
 
-        response.Email.Should().Be(request.Email);
-        response.Name.Should().Be(request.Name);
+        var created = await userManager.FindByEmailAsync(request.Email);
+        created.Should().NotBeNull();
+        created!.DisplayName.Should().Be(request.Name);
     }
 
     [Fact]
@@ -52,7 +55,7 @@ public class UserServiceTests : DatabaseTestBase
         await using var scope = CreateScope();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-        var request = new CreateUserRequestDto("weak-password@example.com", "弱口令用户", "123", null);
+        var request = new CreateUserDto("weak-password@example.com", "�������û�", "123", null);
 
         var act = () => userService.RegisterAsync(request, CancellationToken.None);
 

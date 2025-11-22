@@ -1,4 +1,4 @@
-namespace Mubai.MonolithicShop.Repositories;
+﻿namespace Mubai.MonolithicShop.Repositories;
 
 public interface IGenericRepository<TEntity, TKey> where TEntity : class
 {

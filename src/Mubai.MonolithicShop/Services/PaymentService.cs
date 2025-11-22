@@ -1,20 +1,22 @@
-﻿using Mubai.MonolithicShop.Dtos.Payment;
+using Mubai.MonolithicShop.Dtos.Payment;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.UnitOfWork.Abstractions;
+using System.Collections.Concurrent;
 
 namespace Mubai.MonolithicShop.Services;
 
 /// <summary>
-/// 支付服务，负责模拟支付渠道并记录结果。
+/// 支付服务，模拟支付网关并记录结果。
 /// </summary>
 public class PaymentService(
-    IPaymentRepository paymentRepository, 
-    IOrderRepository orderRepository, 
+    IPaymentRepository paymentRepository,
+    IOrderRepository orderRepository,
     IInventoryRepository inventoryRepository,
-    IUnitOfWork unitOfWork, 
+    IUnitOfWork unitOfWork,
     ILogger<PaymentService> logger) : IPaymentService
 {
+    private static readonly ConcurrentDictionary<long, SemaphoreSlim> PaymentLocks = new();
     private readonly IPaymentRepository _paymentRepository = paymentRepository;
     private readonly IOrderRepository _orderRepository = orderRepository;
     private readonly IInventoryRepository _inventoryRepository = inventoryRepository;
@@ -24,30 +26,50 @@ public class PaymentService(
     /// <inheritdoc />
     public async Task ProcessPaymentAsync(ProcessPaymentRequestDto request, CancellationToken token = default)
     {
-        await _unitOfWork.ExecuteInTransactionAsync(async ct =>
+        var gate = PaymentLocks.GetOrAdd(request.OrderId, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync(token);
+        try
         {
-            var order = await _orderRepository.GetByIdAsync(request.OrderId);
-            var (payment, isNew) = await LoadOrCreatePaymentAsync(request, token);
-            DeterminePaymentResult(order, request, payment);
-            if (!isNew)
+            await _unitOfWork.ExecuteInTransactionAsync(async ct =>
             {
-                _paymentRepository.Update(payment);
-            }
-            payment = await _paymentRepository.GetByOrderIdAsync(request.OrderId, token);
-            if (payment.Status == PaymentStatus.Succeeded)
-            {
-                await UpdateOrderStatusAsync(order,OrderStatus.Paid);
-                await CommitReservationAsync(order.Items, token);
+                var order = await _orderRepository.GetWithItemsAsync(request.OrderId, token)
+                            ?? throw new InvalidOperationException("订单不存在，无法处理支付");
+                if (order.Status == OrderStatus.Paid)
+                {
+                    return;
+                }
 
-            }
-            else
-            {
-                await UpdateOrderStatusAsync(order, OrderStatus.PaymentFailed);
-                await ReleaseReservationAsync(order.Items, token);
-            }
-            _orderRepository.Update(order);
-            await _unitOfWork.SaveChangesAsync(token);
-        }, token);
+                var (payment, isNew) = await LoadOrCreatePaymentAsync(request, token);
+                if (!isNew && payment.Status == PaymentStatus.Succeeded)
+                {
+                    return;
+                }
+
+                DeterminePaymentResult(order, request, payment);
+                if (!isNew)
+                {
+                    _paymentRepository.Update(payment);
+                }
+
+                if (payment.Status == PaymentStatus.Succeeded)
+                {
+                    await UpdateOrderStatusAsync(order, OrderStatus.Paid);
+                    await CommitReservationAsync(order.Items, token);
+                }
+                else
+                {
+                    await UpdateOrderStatusAsync(order, OrderStatus.PaymentFailed);
+                    await ReleaseReservationAsync(order.Items, token);
+                }
+
+                _orderRepository.Update(order);
+                await _unitOfWork.SaveChangesAsync(token);
+            }, token);
+        }
+        finally
+        {
+            gate.Release();
+        }
     }
 
     private async Task<(Payment payment, bool isNew)> LoadOrCreatePaymentAsync(ProcessPaymentRequestDto request, CancellationToken token)
@@ -77,14 +99,14 @@ public class PaymentService(
     {
         if (request.Amount != order.TotalAmount)
         {
-            SetPaymentFailed(payment, "支付金额与订单金额不一致。");
+            SetPaymentFailed(payment, "支付金额与订单总额不一致。");
             return;
         }
 
         var shouldFail = string.Equals(request.PaymentMethod, "simulate-failure", StringComparison.OrdinalIgnoreCase);
         if (shouldFail)
         {
-            SetPaymentFailed(payment, "已根据请求模拟支付失败。");
+            SetPaymentFailed(payment, "已按请求模拟支付失败。");
             return;
         }
 
@@ -92,7 +114,7 @@ public class PaymentService(
     }
 
     /// <summary>
-    /// 将支付记录标记为成功，并写入服务商参考号。
+    /// 将支付记录标记为成功，并写入网关参考号。
     /// </summary>
     private static void SetPaymentSucceeded(Payment payment, string providerReference)
     {
@@ -118,11 +140,10 @@ public class PaymentService(
         order.Status = status;
         order.UpdatedTime = DateTime.UtcNow;
         order.ConcurrencyStamp++;
-        _orderRepository.Update(order);
     }
 
     /// <summary>
-    /// 释放预留库存
+    /// 释放预留库存。
     /// </summary>
     private async Task ReleaseReservationAsync(IEnumerable<OrderItem> items, CancellationToken token = default)
     {
@@ -144,13 +165,13 @@ public class PaymentService(
 
         if (missingProducts is { Count: > 0 })
         {
-            throw new InvalidOperationException($"以下商品不存在，无法释放预留库存: {string.Join(',', missingProducts)}");
+            throw new InvalidOperationException($"部分商品不存在，无法释放预留库存: {string.Join(',', missingProducts)}");
         }
     }
-    /// <summary>
-    /// 提交预留库存
-    /// </summary>
 
+    /// <summary>
+    /// 提交预留库存。
+    /// </summary>
     private async Task CommitReservationAsync(IEnumerable<OrderItem> items, CancellationToken token = default)
     {
         var productIds = items.Select(i => i.ProductId).Distinct().ToList();
@@ -171,7 +192,7 @@ public class PaymentService(
 
         if (missingProducts is { Count: > 0 })
         {
-            throw new InvalidOperationException($"以下商品不存在，无法扣减预留库存: {string.Join(',', missingProducts)}");
+            throw new InvalidOperationException($"部分商品不存在，无法扣减预留库存: {string.Join(',', missingProducts)}");
         }
     }
 

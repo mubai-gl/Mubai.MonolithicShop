@@ -1,4 +1,4 @@
-using Mubai.MonolithicShop.Entities;
+﻿using Mubai.MonolithicShop.Entities;
 
 namespace Mubai.MonolithicShop.Repositories;
 

@@ -2,15 +2,16 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Mubai.MonolithicShop;
 
 namespace Mubai.MonolithicShop.Tests.TestUtilities;
 
 /// <summary>
-/// 自定义 WebApplicationFactory，测试时使用 SQLite 文件数据库。
+/// �Զ��� WebApplicationFactory������ʱʹ�� InMemory ���ݿ⡣
 /// </summary>
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"mubai-tests-{Guid.NewGuid():N}.db");
+    private readonly string _databaseName = $"mubai-tests-{Guid.NewGuid():N}";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -19,11 +20,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         {
             var overrides = new Dictionary<string, string?>
             {
-                ["DatabaseProvider"] = "Sqlite",
-                ["Database:Provider"] = "Sqlite",
-                ["Database:ConnectionString"] = $"Data Source={_dbPath}",
-                ["Database:SqliteConnectionString"] = $"Data Source={_dbPath}",
-                ["ConnectionStrings:Default"] = $"Data Source={_dbPath}"
+                ["DatabaseProvider"] = "InMemory",
+                ["Database:Provider"] = "InMemory",
+                ["Database:ConnectionString"] = _databaseName,
+                ["Database:SqliteConnectionString"] = _databaseName,
+                ["ConnectionStrings:Default"] = _databaseName
             };
             configBuilder.AddInMemoryCollection(overrides);
         });
@@ -35,21 +36,5 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
         await db.Database.EnsureDeletedAsync();
         await db.Database.EnsureCreatedAsync();
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        base.Dispose(disposing);
-        if (disposing && File.Exists(_dbPath))
-        {
-            try
-            {
-                File.Delete(_dbPath);
-            }
-            catch (IOException)
-            {
-                // 测试运行结束时若文件被占用，忽略删除异常。
-            }
-        }
     }
 }
