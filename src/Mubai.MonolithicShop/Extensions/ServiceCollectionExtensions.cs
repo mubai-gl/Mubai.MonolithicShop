@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Filters;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Options;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.MonolithicShop.Services;
@@ -63,8 +64,7 @@ public static class ServiceCollectionExtensions
 
         services.AddSnowflakeIdGenerator(options => options.WorkerId = 1);
 
-        services.AddScoped<IEfUnitOfWork<ShopDbContext>, EfUnitOfWork<ShopDbContext>>();
-        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<IEfUnitOfWork<ShopDbContext>>());
+        services.AddScoped<IUnitOfWork<ShopDbContext>, EfUnitOfWork<ShopDbContext>>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
         services.AddScoped<IPaymentRepository, PaymentRepository>();
@@ -101,49 +101,46 @@ public static class ServiceCollectionExtensions
 
         services.AddOpenApi(options =>
         {
-            // 给整个文档加 Bearer 安全定义 + 全局 requirement
-            options.AddDocumentTransformer<BearerSecurityTransformer>();
+            // Specify the OpenAPI version to use
+            options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_1;
+
+            // Add JWT bearer security scheme so Swagger UI supports Authorize
+            options.AddDocumentTransformer((document, context, cancellationToken) =>
+            {
+                document.Components ??= new OpenApiComponents();
+                document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+
+                var bearerScheme = new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Name = "Authorization",
+                    Description = "JWT Bearer token"
+                };
+                document.Components.SecuritySchemes["Bearer"] = bearerScheme;
+
+                var paths = document.Paths;
+                if (paths is not null)
+                {
+                    foreach (var path in paths.Values)
+                    {
+                        foreach (var operation in path.Operations.Values)
+                        {
+                            operation.Security ??= new List<OpenApiSecurityRequirement>();
+                            operation.Security.Add(new OpenApiSecurityRequirement
+                            {
+                                [new OpenApiSecuritySchemeReference("Bearer", document)] = new List<string>()
+                            });
+                        }
+                    }
+                }
+
+                return Task.CompletedTask;
+            });
         });
 
         return services;
-    }
-
-    internal sealed class BearerSecurityTransformer(
-    IAuthenticationSchemeProvider schemeProvider) : IOpenApiDocumentTransformer
-    {
-        public async Task TransformAsync(
-            OpenApiDocument document,
-            OpenApiDocumentTransformerContext context,
-            CancellationToken cancellationToken)
-        {
-            var schemes = await schemeProvider.GetAllSchemesAsync();
-            if (!schemes.Any(s => s.Name == "Bearer"))
-            {
-                return;
-            }
-
-            // 顶层 Components.SecuritySchemes 里加 Bearer
-            document.Components ??= new OpenApiComponents();
-            document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-
-            document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
-            {
-                Type = SecuritySchemeType.Http,
-                Scheme = "bearer",
-                In = ParameterLocation.Header,
-                BearerFormat = "JWT",
-                Description = "在此处输入 Bearer Token，格式为 Bearer {token}。"
-            };
-
-            // 所有 operation 加上 SecurityRequirement（相当于全局“加锁”）
-            foreach (var operation in document.Paths.Values.SelectMany(p => p.Operations.Values))
-            {
-                operation.Security ??= [];
-                operation.Security.Add(new OpenApiSecurityRequirement
-                {
-                    [new OpenApiSecuritySchemeReference("Bearer", document)] = []
-                });
-            }
-        }
     }
 }

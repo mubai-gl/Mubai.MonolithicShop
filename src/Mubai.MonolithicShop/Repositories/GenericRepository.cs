@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Mubai.MonolithicShop.Infrastructure;
 
 namespace Mubai.MonolithicShop.Repositories;
 

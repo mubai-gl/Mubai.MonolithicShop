@@ -1,10 +1,9 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
-using Mubai.MonolithicShop;
 using Mubai.MonolithicShop.Dtos.Identity;
 using Mubai.MonolithicShop.Dtos.Inventory;
 using Mubai.MonolithicShop.Dtos.Order;
@@ -15,6 +14,7 @@ using Mubai.MonolithicShop.Tests.TestUtilities;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Mubai.MonolithicShop.Infrastructure;
 
 namespace Mubai.MonolithicShop.Tests.Integration;
 
@@ -64,7 +64,7 @@ public class ApiEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAs
     {
         var client = _factory.CreateClient();
         var email = $"public-register-{Guid.NewGuid():N}@example.com";
-        var request = new CreateUserDto(email, "����ע���û�", "RegPassw0rd!", "13888888888");
+        var request = new CreateUserDto(email, "测试注册用户", "RegPassw0rd!", "13888888888");
 
         var response = await client.PostAsJsonAsync("/api/auth/register", request, CancellationToken.None);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -79,7 +79,7 @@ public class ApiEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAs
     public async Task Product_CreateAndGet_ShouldWork()
     {
         var (client, _) = await CreateAuthorizedClientAsync();
-        var request = new CreateProductRequestDto("API ������Ʒ", $"SKU-{Guid.NewGuid():N}", 199m, "������Ʒ");
+        var request = new CreateProductRequestDto("API 创建商品", $"SKU-{Guid.NewGuid():N}", 199m, "端到端测试商品");
 
         var response = await client.PostAsJsonAsync("/api/product", request, CancellationToken.None);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -93,14 +93,14 @@ public class ApiEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAs
     public async Task Product_Update_ShouldPersistChanges()
     {
         var (client, product) = await CreateAuthorizedClientWithProductAsync();
-        var request = new UpdateProductRequestDto(product.Id, "���º����Ʒ", product.Sku, 299m, "��������", false);
+        var request = new UpdateProductRequestDto(product.Id, "更新后的商品", product.Sku, 299m, "更新后的描述", false);
 
         var response = await client.PutAsJsonAsync("/api/product", request, CancellationToken.None);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var getResponse = await client.GetAsync($"/api/product/{product.Id}");
         var dto = await ReadResponseAsync<ProductResponseDto>(getResponse, HttpStatusCode.OK);
-        dto.Name.Should().Be("���º����Ʒ");
+        dto.Name.Should().Be("更新后的商品");
         dto.IsActive.Should().BeFalse();
     }
 
@@ -134,7 +134,7 @@ public class ApiEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAs
         var placeRequest = new PlaceOrderRequestDto(
             user.Id,
             new[] { new PlaceOrderItem(product.Id, 1, product.Price) },
-            "�µ�����",
+            "测试下单备注",
             new PlaceOrderPaymentDto(product.Price, "MockGateway", "card", "CNY"));
 
         var placeResponse = await client.PostAsJsonAsync("/api/order", placeRequest, CancellationToken.None);
@@ -163,7 +163,7 @@ public class ApiEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAs
         var placeRequest = new PlaceOrderRequestDto(
             user.Id,
             new[] { new PlaceOrderItem(product.Id, 1, product.Price) },
-            "֧��ʧ��",
+            "模拟失败订单",
             new PlaceOrderPaymentDto(product.Price, "MockGateway", "card", "CNY"));
 
         var placeResponse = await client.PostAsJsonAsync("/api/order", placeRequest, CancellationToken.None);
@@ -215,7 +215,7 @@ public class ApiEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAs
             Id = Guid.NewGuid(),
             Email = email,
             UserName = email,
-            DisplayName = "���ɲ����û�"
+            DisplayName = "测试用户"
         };
 
         var result = await userManager.CreateAsync(user, DefaultPassword);
@@ -250,10 +250,10 @@ public class ApiEndpointsTests : IClassFixture<CustomWebApplicationFactory>, IAs
 
         var product = new Product
         {
-            Name = "���ɲ�����Ʒ",
+            Name = "测试商品",
             Sku = $"SKU-{Guid.NewGuid():N}",
             Price = 150m,
-            Description = "���� WebAPI ���ɲ���"
+            Description = "用于 WebAPI 端到端测试"
         };
 
         db.Products.Add(product);

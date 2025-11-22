@@ -2,9 +2,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop;
 using Mubai.MonolithicShop.Dtos.Order;
 using Mubai.MonolithicShop.Entities;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
 
@@ -29,7 +29,7 @@ public class OrderServiceTests : DatabaseTestBase
 
         var product = new Product
         {
-            Name = "������Ʒ",
+            Name = "下单测试商品",
             Sku = "SKU-DEBUG",
             Price = 100m
         };
@@ -70,7 +70,7 @@ public class OrderServiceTests : DatabaseTestBase
         var user = await CreateUserAsync(userManager, "lookup@example.com");
         var product = new Product
         {
-            Name = "��ѯ��Ʒ",
+            Name = "查询商品",
             Sku = "SKU-LOOKUP",
             Price = 50m
         };

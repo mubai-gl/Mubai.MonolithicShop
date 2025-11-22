@@ -287,7 +287,6 @@ namespace Mubai.MonolithicShop.Migrations
                     Status = table.Column<int>(type: "int", nullable: false),
                     Provider = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     ProviderReference = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Currency = table.Column<string>(type: "nvarchar(16)", maxLength: 16, nullable: false),
                     FailureReason = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedTime = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedTime = table.Column<DateTime>(type: "datetime2", nullable: false)

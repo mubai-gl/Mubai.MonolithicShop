@@ -5,14 +5,14 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Mubai.MonolithicShop;
+using Mubai.MonolithicShop.Infrastructure;
 
 #nullable disable
 
 namespace Mubai.MonolithicShop.Migrations
 {
     [DbContext(typeof(ShopDbContext))]
-    [Migration("20251120155228_InitialCreate")]
+    [Migration("20251122160559_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -358,11 +358,6 @@ namespace Mubai.MonolithicShop.Migrations
 
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
 
                     b.Property<string>("FailureReason")
                         .HasColumnType("nvarchar(max)");

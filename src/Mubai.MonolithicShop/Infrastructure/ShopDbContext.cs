@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Mubai.MonolithicShop.Entities;
 
-namespace Mubai.MonolithicShop;
+namespace Mubai.MonolithicShop.Infrastructure;
 
 public class ShopDbContext : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
 {

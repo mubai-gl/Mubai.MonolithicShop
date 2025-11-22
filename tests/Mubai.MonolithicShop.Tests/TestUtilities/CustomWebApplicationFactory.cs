@@ -1,13 +1,13 @@
-﻿using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop;
+using Mubai.MonolithicShop.Infrastructure;
 
 namespace Mubai.MonolithicShop.Tests.TestUtilities;
 
 /// <summary>
-/// �Զ��� WebApplicationFactory������ʱʹ�� InMemory ���ݿ⡣
+/// 自定义 WebApplicationFactory，测试时使用 InMemory 数据库。
 /// </summary>
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {

@@ -25,7 +25,7 @@ public class UserServiceTests : DatabaseTestBase
         var email = "duplicate@example.com";
         await SeedUserAsync(userManager, email);
 
-        var request = new CreateUserDto(email, "�ظ��û�", "Passw0rd!", "13800138000");
+        var request = new CreateUserDto(email, "重复用户", "Passw0rd!", "13800138000");
 
         var act = () => userService.RegisterAsync(request, CancellationToken.None);
 
@@ -40,7 +40,7 @@ public class UserServiceTests : DatabaseTestBase
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
         var userService = services.GetRequiredService<IUserService>();
 
-        var request = new CreateUserDto("new-user@example.com", "���û�", "Passw0rd!", "13900000000");
+        var request = new CreateUserDto("new-user@example.com", "新用户", "Passw0rd!", "13900000000");
 
         await userService.RegisterAsync(request, CancellationToken.None);
 
@@ -55,7 +55,7 @@ public class UserServiceTests : DatabaseTestBase
         await using var scope = CreateScope();
         var userService = scope.ServiceProvider.GetRequiredService<IUserService>();
 
-        var request = new CreateUserDto("weak-password@example.com", "�������û�", "123", null);
+        var request = new CreateUserDto("weak-password@example.com", "弱密码用户", "123", null);
 
         var act = () => userService.RegisterAsync(request, CancellationToken.None);
 

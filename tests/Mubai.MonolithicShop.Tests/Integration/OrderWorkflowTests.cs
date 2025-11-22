@@ -1,12 +1,12 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop;
 using Mubai.MonolithicShop.Dtos.Identity;
 using Mubai.MonolithicShop.Dtos.Order;
 using Mubai.MonolithicShop.Dtos.Payment;
 using Mubai.MonolithicShop.Entities;
+using Mubai.MonolithicShop.Infrastructure;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -14,7 +14,7 @@ using System.Net.Http.Json;
 namespace Mubai.MonolithicShop.Tests.Integration;
 
 /// <summary>
-/// ����ȫ���̵ļ��ɲ��ԣ������û����µ�������֧����������·��
+/// 覆盖全流程的端到端测试，模拟用户登录、下单、支付与库存回收。
 /// </summary>
 public class OrderWorkflowTests : IClassFixture<TestUtilities.CustomWebApplicationFactory>
 {
@@ -36,12 +36,12 @@ public class OrderWorkflowTests : IClassFixture<TestUtilities.CustomWebApplicati
         var request = new PlaceOrderRequestDto(
             userId,
             new[] { new PlaceOrderItem(productId, 2, 99m) },
-            "�Զ������Զ���",
+            "端到端下单备注",
             new PlaceOrderPaymentDto(198m, "MockGateway", "card", "CNY"));
 
         var response = await client.PostAsJsonAsync("/api/order", request, CancellationToken.None);
         var payload = await response.Content.ReadAsStringAsync();
-        response.StatusCode.Should().Be(HttpStatusCode.OK, "��Ӧ����: {0}", payload);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, "响应内容: {0}", payload);
 
         var orderId = await ResolveOrderIdAsync(userId);
 
@@ -73,16 +73,16 @@ public class OrderWorkflowTests : IClassFixture<TestUtilities.CustomWebApplicati
             Id = Guid.NewGuid(),
             Email = email,
             UserName = email,
-            DisplayName = "�µ��û�"
+            DisplayName = "下单用户"
         };
         await userManager.CreateAsync(user, password);
 
         var product = new Product
         {
-            Name = "������Ʒ",
+            Name = "订单测试商品",
             Sku = "SKU-ORDER-001",
             Price = 99m,
-            Description = "���ڶ������̲���"
+            Description = "用于订单流程测试"
         };
         db.Products.Add(product);
         db.InventoryItems.Add(new InventoryItem
@@ -102,7 +102,7 @@ public class OrderWorkflowTests : IClassFixture<TestUtilities.CustomWebApplicati
         var loginRequest = new LoginDto(email, password);
         var loginResponse = await client.PostAsJsonAsync("/api/auth/login", loginRequest, CancellationToken.None);
         var loginPayload = await loginResponse.Content.ReadAsStringAsync();
-        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK, "��¼��Ӧ: {0}", loginPayload);
+        loginResponse.StatusCode.Should().Be(HttpStatusCode.OK, "登录响应: {0}", loginPayload);
 
         var tokenResponse = await loginResponse.Content.ReadFromJsonAsync<TokenResponseDto>();
         tokenResponse.Should().NotBeNull();

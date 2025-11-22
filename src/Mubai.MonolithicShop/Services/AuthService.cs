@@ -3,9 +3,11 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Mubai.MonolithicShop.Dtos.Identity;
 using Mubai.MonolithicShop.Entities;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Options;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.UnitOfWork.Abstractions;
+using Mubai.UnitOfWork.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -18,13 +20,13 @@ namespace Mubai.MonolithicShop.Services;
 public class AuthService(
     UserManager<ApplicationUser> userManager,
     IRefreshTokenRepository refreshTokenRepository,
-    IUnitOfWork unitOfWork,
+    IUnitOfWork<ShopDbContext> unitOfWork,
     IOptions<JwtOptions> options,
     ILogger<AuthService> logger) : IAuthService
 {
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUnitOfWork<ShopDbContext> _unitOfWork = unitOfWork;
     private readonly JwtOptions _jwtOptions = options.Value;
     private readonly ILogger<AuthService> _logger = logger;
 

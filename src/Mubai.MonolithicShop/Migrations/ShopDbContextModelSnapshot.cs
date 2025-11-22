@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Mubai.MonolithicShop;
+using Mubai.MonolithicShop.Infrastructure;
 
 #nullable disable
 
@@ -355,11 +355,6 @@ namespace Mubai.MonolithicShop.Migrations
 
                     b.Property<DateTime>("CreatedTime")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)");
 
                     b.Property<string>("FailureReason")
                         .HasColumnType("nvarchar(max)");

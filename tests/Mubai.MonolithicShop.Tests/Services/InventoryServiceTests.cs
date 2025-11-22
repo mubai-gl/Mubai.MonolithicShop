@@ -1,7 +1,7 @@
 ﻿using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop;
 using Mubai.MonolithicShop.Entities;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
 
@@ -23,7 +23,7 @@ public class InventoryServiceTests : DatabaseTestBase
 
         var product = new Product
         {
-            Name = "��������Ʒ",
+            Name = "库存测试商品",
             Sku = "SKU-INV",
             Price = 10m
         };

@@ -2,14 +2,18 @@
 using Microsoft.EntityFrameworkCore;
 using Mubai.MonolithicShop.Dtos.Identity;
 using Mubai.MonolithicShop.Entities;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.UnitOfWork.Abstractions;
+using Mubai.UnitOfWork.EntityFrameworkCore;
 
 namespace Mubai.MonolithicShop.Services;
 
 /// <summary>
 /// 用户服务
 /// </summary>
-public class UserService(UserManager<ApplicationUser> userManager, IUnitOfWork unitOfWork) : IUserService
+public class UserService(
+    UserManager<ApplicationUser> userManager, 
+    IUnitOfWork<ShopDbContext> unitOfWork) : IUserService
 {
     private readonly UserManager<ApplicationUser> _userManager = userManager;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;

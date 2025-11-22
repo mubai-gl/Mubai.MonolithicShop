@@ -1,12 +1,12 @@
-using FluentAssertions;
+﻿using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop;
 using Mubai.MonolithicShop.Dtos.Order;
 using Mubai.MonolithicShop.Dtos.Payment;
 using Mubai.MonolithicShop.Entities;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
 using Microsoft.EntityFrameworkCore;
+using Mubai.MonolithicShop.Infrastructure;
 
 namespace Mubai.MonolithicShop.Tests.Concurrency;
 

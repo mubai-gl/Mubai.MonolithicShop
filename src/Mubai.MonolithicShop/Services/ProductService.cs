@@ -1,7 +1,9 @@
 ﻿using Mubai.MonolithicShop.Dtos.Product;
 using Mubai.MonolithicShop.Entities;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.UnitOfWork.Abstractions;
+using Mubai.UnitOfWork.EntityFrameworkCore;
 
 namespace Mubai.MonolithicShop.Services;
 
@@ -11,11 +13,11 @@ namespace Mubai.MonolithicShop.Services;
 public class ProductService(
     IProductRepository productRepository,
     IInventoryRepository inventoryRepository,
-    IUnitOfWork unitOfWork) : IProductService
+    IUnitOfWork<ShopDbContext> unitOfWork) : IProductService
 {
     private readonly IProductRepository _productRepository = productRepository;
     private readonly IInventoryRepository _inventoryRepository = inventoryRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUnitOfWork<ShopDbContext> _unitOfWork = unitOfWork;
 
     /// <inheritdoc />
     public async Task CreateAsync(CreateProductRequestDto request, CancellationToken token = default)

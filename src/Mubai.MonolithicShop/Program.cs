@@ -1,4 +1,7 @@
-﻿using Mubai.MonolithicShop.Extensions;
+﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Mubai.MonolithicShop.Extensions;
+using Mubai.MonolithicShop.Options;
 
 namespace Mubai.MonolithicShop;
 
@@ -16,6 +19,7 @@ public partial class Program
             .AddApi();
 
         var app = builder.Build();
+        app.ApplyMigrations();
 
         ConfigureMiddleware(app);
 
@@ -30,7 +34,6 @@ public partial class Program
             builder.Host.UseEnvironment(environmentFromConfig);
         }
     }
-
     private static void ConfigureMiddleware(WebApplication app)
     {
         if (app.Environment.IsDevelopment())
@@ -38,13 +41,8 @@ public partial class Program
             app.MapOpenApi();
             app.UseSwaggerUI(options =>
             {
-                options.SwaggerEndpoint("/openapi/v1.json", "Mubai.MonolithicShop API");
-                options.RoutePrefix = string.Empty;
+                options.SwaggerEndpoint("/openapi/v1.json", "Mubai.MonolithicShop (OpenAPI 3.1)");
             });
-        }
-        else
-        {
-            app.MapOpenApi().RequireAuthorization();
         }
         
         app.UseHttpsRedirection();

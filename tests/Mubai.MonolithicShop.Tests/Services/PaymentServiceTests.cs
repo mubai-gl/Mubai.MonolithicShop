@@ -1,9 +1,9 @@
 ﻿using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop;
 using Mubai.MonolithicShop.Dtos.Payment;
 using Mubai.MonolithicShop.Entities;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
@@ -93,7 +93,7 @@ public class PaymentServiceTests : DatabaseTestBase
 
         var product = new Product
         {
-            Name = "֧������Ʒ",
+            Name = "支付测试商品",
             Sku = $"SKU-PAY-{Guid.NewGuid():N}".Substring(0, 16),
             Price = totalAmount
         };

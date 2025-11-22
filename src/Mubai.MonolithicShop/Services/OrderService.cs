@@ -2,20 +2,27 @@
 using Mubai.MonolithicShop.Dtos;
 using Mubai.MonolithicShop.Dtos.Order;
 using Mubai.MonolithicShop.Entities;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.Snowflake;
 using Mubai.UnitOfWork.Abstractions;
+using Mubai.UnitOfWork.EntityFrameworkCore;
 
 namespace Mubai.MonolithicShop.Services;
 
 /// <summary>
 /// 订单服务。
 /// </summary>
-public class OrderService(IOrderRepository orderRepository, IInventoryRepository inventoryRepository, IUnitOfWork unitOfWork, IIdGenerator idGenerator, ILogger<OrderService> logger) : IOrderService
+public class OrderService(
+    IOrderRepository orderRepository, 
+    IInventoryRepository inventoryRepository, 
+    IUnitOfWork<ShopDbContext> unitOfWork, 
+    IIdGenerator idGenerator, 
+    ILogger<OrderService> logger) : IOrderService
 {
     private readonly IOrderRepository _orderRepository = orderRepository;
     private readonly IInventoryRepository _inventoryRepository = inventoryRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUnitOfWork<ShopDbContext> _unitOfWork = unitOfWork;
     private readonly IIdGenerator _idGenerator = idGenerator;
     private readonly ILogger<OrderService> _logger = logger;
 

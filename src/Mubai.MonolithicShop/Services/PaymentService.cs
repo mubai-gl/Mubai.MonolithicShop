@@ -1,7 +1,9 @@
-using Mubai.MonolithicShop.Dtos.Payment;
+﻿using Mubai.MonolithicShop.Dtos.Payment;
 using Mubai.MonolithicShop.Entities;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Repositories;
 using Mubai.UnitOfWork.Abstractions;
+using Mubai.UnitOfWork.EntityFrameworkCore;
 using System.Collections.Concurrent;
 
 namespace Mubai.MonolithicShop.Services;
@@ -13,14 +15,14 @@ public class PaymentService(
     IPaymentRepository paymentRepository,
     IOrderRepository orderRepository,
     IInventoryRepository inventoryRepository,
-    IUnitOfWork unitOfWork,
+    IUnitOfWork<ShopDbContext> unitOfWork,
     ILogger<PaymentService> logger) : IPaymentService
 {
     private static readonly ConcurrentDictionary<long, SemaphoreSlim> PaymentLocks = new();
     private readonly IPaymentRepository _paymentRepository = paymentRepository;
     private readonly IOrderRepository _orderRepository = orderRepository;
     private readonly IInventoryRepository _inventoryRepository = inventoryRepository;
-    private readonly IUnitOfWork _unitOfWork = unitOfWork;
+    private readonly IUnitOfWork<ShopDbContext> _unitOfWork = unitOfWork;
     private readonly ILogger<PaymentService> _logger = logger;
 
     /// <inheritdoc />

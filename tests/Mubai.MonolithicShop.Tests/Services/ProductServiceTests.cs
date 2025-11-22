@@ -1,15 +1,15 @@
 ﻿using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Mubai.MonolithicShop;
 using Mubai.MonolithicShop.Dtos.Product;
+using Mubai.MonolithicShop.Infrastructure;
 using Mubai.MonolithicShop.Services;
 using Mubai.MonolithicShop.Tests.TestUtilities;
 
 namespace Mubai.MonolithicShop.Tests.Services;
 
 /// <summary>
-/// ��Ʒ����Ĺ��ܲ��ԣ���֤����ҵ���߼���
+/// 商品服务的功能测试，验证核心业务逻辑。
 /// </summary>
 public class ProductServiceTests : DatabaseTestBase
 {
@@ -24,11 +24,11 @@ public class ProductServiceTests : DatabaseTestBase
         var productService = scope.ServiceProvider.GetRequiredService<IProductService>();
         var db = scope.ServiceProvider.GetRequiredService<ShopDbContext>();
 
-        var dto = new CreateProductRequestDto("������Ʒ", "SKU-001", 199m, "�߶�����");
+        var dto = new CreateProductRequestDto("测试商品", "SKU-001", 199m, "高端商品");
         await productService.CreateAsync(dto, CancellationToken.None);
 
         var created = await db.Products.SingleAsync(p => p.Sku == "SKU-001");
-        created.Name.Should().Be("������Ʒ");
+        created.Name.Should().Be("测试商品");
 
         var inventory = await db.InventoryItems.FirstOrDefaultAsync(i => i.ProductId == created.Id);
         inventory.Should().NotBeNull();
@@ -41,7 +41,7 @@ public class ProductServiceTests : DatabaseTestBase
         await using var scope = CreateScope();
         var productService = scope.ServiceProvider.GetRequiredService<IProductService>();
 
-        var dto = new CreateProductRequestDto("������Ʒ", "SKU-001", 199m, null);
+        var dto = new CreateProductRequestDto("测试商品", "SKU-001", 199m, null);
         await productService.CreateAsync(dto, CancellationToken.None);
 
         var act = async () => await productService.CreateAsync(dto, CancellationToken.None);
